@@ -55,6 +55,20 @@ The public site is available without an account. The participant portal and admi
 
 For local bootstrap access, set `CLERK_ADMIN_EMAILS` to a comma-separated list of trusted admin emails. For vendor and sponsor access, link the Clerk user to a row in the `users` table using `clerk_user_id`, or use an email that already exists in the seeded `users` table.
 
+Clerk handles identity and sign-in. Neon stores the application role, organization and approval status. When a signed-in Clerk user opens a protected workspace, the app syncs that Clerk profile into the Neon `users` table. Emails listed in `CLERK_ADMIN_EMAILS` are promoted to `super_admin`.
+
+To create a super admin directly in Neon for testing:
+
+```bash
+pnpm db:bootstrap-admin "dkhennys@gmail.com" "Khenny D"
+```
+
+To create missing `visitor` rows for people who already submitted participant access requests:
+
+```bash
+pnpm db:backfill-access-users
+```
+
 ## Document Uploads
 
 V1 uses a storage abstraction in `src/lib/storage.ts`. The local mock upload flow stores document metadata through Drizzle when `DATABASE_URL` is configured and returns a `local://` mock object URL for UI testing.
@@ -69,6 +83,8 @@ pnpm typecheck
 pnpm build
 pnpm db:generate
 pnpm db:migrate
+pnpm db:bootstrap-admin "admin@example.com" "Admin Name"
+pnpm db:backfill-access-users
 pnpm db:seed
 ```
 

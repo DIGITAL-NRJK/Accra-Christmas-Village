@@ -1,12 +1,17 @@
 import { desc, eq, or } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { accessRequests, documents, organizations, users } from "@/db/schema";
-import type { DocumentStatus, ParticipantRole } from "@/lib/types";
+import type { DocumentStatus, ParticipantRole, Role } from "@/lib/types";
 
 const participantRoles: ParticipantRole[] = ["vendor", "sponsor", "partner"];
+const organizerOrganizationId = "org-festival-ops";
 
 function isParticipantRole(role: string): role is ParticipantRole {
   return participantRoles.includes(role as ParticipantRole);
+}
+
+function normalizeEmail(email: string | null) {
+  return email?.trim().toLowerCase() || null;
 }
 
 export type SaveDocumentMetadataInput = {
@@ -90,13 +95,14 @@ export async function findUserByClerkIdentity(clerkUserId: string, email: string
     return null;
   }
 
+  const normalizedEmail = normalizeEmail(email);
   const db = getDb();
   const [user] = await db
     .select()
     .from(users)
     .where(
-      email
-        ? or(eq(users.clerkUserId, clerkUserId), eq(users.email, email))
+      normalizedEmail
+        ? or(eq(users.clerkUserId, clerkUserId), eq(users.email, normalizedEmail))
         : eq(users.clerkUserId, clerkUserId),
     )
     .limit(1);
@@ -112,6 +118,84 @@ export async function findUserByClerkIdentity(clerkUserId: string, email: string
   }
 
   return user ?? null;
+}
+
+export type SyncClerkUserProfileInput = {
+  clerkUserId: string;
+  email: string | null;
+  fullName: string;
+  adminEmails: string[];
+};
+
+export async function syncClerkUserProfile(input: SyncClerkUserProfileInput) {
+  if (!process.env.DATABASE_URL) {
+    return null;
+  }
+
+  const email = normalizeEmail(input.email);
+
+  if (!email) {
+    return null;
+  }
+
+  const db = getDb();
+  const adminEmails = input.adminEmails.map((adminEmail) => adminEmail.toLowerCase());
+  const isBootstrapAdmin = adminEmails.includes(email);
+
+  if (isBootstrapAdmin) {
+    await db
+      .insert(organizations)
+      .values({
+        id: organizerOrganizationId,
+        name: "Accra Christmas Village Operations",
+        type: "organizer",
+        contactEmail: email,
+        contactPhone: "",
+        status: "active",
+      })
+      .onConflictDoNothing();
+  }
+
+  const [existingUser] = await db
+    .select()
+    .from(users)
+    .where(or(eq(users.clerkUserId, input.clerkUserId), eq(users.email, email)))
+    .limit(1);
+
+  const role: Role = isBootstrapAdmin ? "super_admin" : existingUser?.role ?? "visitor";
+  const organizationId = isBootstrapAdmin ? organizerOrganizationId : existingUser?.organizationId ?? null;
+  const fullName = input.fullName.trim() || existingUser?.fullName || email;
+
+  if (existingUser) {
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        clerkUserId: input.clerkUserId,
+        organizationId,
+        role,
+        fullName,
+        email,
+      })
+      .where(eq(users.id, existingUser.id))
+      .returning();
+
+    return updatedUser;
+  }
+
+  const [createdUser] = await db
+    .insert(users)
+    .values({
+      id: crypto.randomUUID(),
+      clerkUserId: input.clerkUserId,
+      organizationId,
+      role,
+      fullName,
+      email,
+      phone: "",
+    })
+    .returning();
+
+  return createdUser;
 }
 
 export type CreateAccessRequestInput = {
@@ -144,6 +228,8 @@ export async function createOrUpdateAccessRequest(input: CreateAccessRequestInpu
       status: "pending",
       reviewerNote: null,
       reviewedAt: null,
+      cancellationReason: null,
+      cancelledAt: null,
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
@@ -158,6 +244,8 @@ export async function createOrUpdateAccessRequest(input: CreateAccessRequestInpu
         status: "pending",
         reviewerNote: null,
         reviewedAt: null,
+        cancellationReason: null,
+        cancelledAt: null,
         updatedAt: new Date(),
       },
     });
@@ -216,6 +304,8 @@ export async function approveAccessRequest(
         status: "rejected",
         reviewerNote: "Only vendor, sponsor and partner access requests can be approved here.",
         reviewedAt: new Date(),
+        cancellationReason: null,
+        cancelledAt: null,
         updatedAt: new Date(),
       })
       .where(eq(accessRequests.id, requestId));
@@ -273,6 +363,8 @@ export async function approveAccessRequest(
       status: "approved",
       reviewerNote,
       reviewedAt: new Date(),
+      cancellationReason: null,
+      cancelledAt: null,
       updatedAt: new Date(),
     })
     .where(eq(accessRequests.id, requestId));
@@ -303,4 +395,26 @@ export async function rejectAccessRequest(
       updatedAt: new Date(),
     })
     .where(eq(accessRequests.id, requestId));
+}
+
+export async function cancelAccessRequestForClerkUser(clerkUserId: string, cancellationReason: string) {
+  if (!process.env.DATABASE_URL) {
+    console.info("Skipped access request cancellation because DATABASE_URL is not set.", {
+      clerkUserId,
+      cancellationReason,
+    });
+    return;
+  }
+
+  const db = getDb();
+
+  await db
+    .update(accessRequests)
+    .set({
+      status: "cancelled",
+      cancellationReason,
+      cancelledAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(accessRequests.clerkUserId, clerkUserId));
 }

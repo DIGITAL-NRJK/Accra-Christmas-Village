@@ -78,6 +78,7 @@ export const accessRequestStatusEnum = pgEnum("access_request_status", [
   "pending",
   "approved",
   "rejected",
+  "cancelled",
 ]);
 
 export const zones = pgTable("zones", {
@@ -321,6 +322,8 @@ export const accessRequests = pgTable(
     status: accessRequestStatusEnum("status").notNull().default("pending"),
     reviewerNote: text("reviewer_note"),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    cancellationReason: text("cancellation_reason"),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },

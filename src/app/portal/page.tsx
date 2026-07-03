@@ -18,7 +18,7 @@ import { PageHeader } from "@/components/page-header";
 import { PortalNav } from "@/components/portal-nav";
 import { ProgressBar } from "@/components/progress-bar";
 import { StatusPill } from "@/components/status-pill";
-import { requestParticipantAccess } from "@/app/portal/actions";
+import { cancelParticipantAccessRequest, requestParticipantAccess } from "@/app/portal/actions";
 import { getAccessRequestForClerkUser } from "@/db/queries";
 import { getCurrentAppSession, isParticipantRole } from "@/lib/auth";
 import {
@@ -88,11 +88,15 @@ function getAccessRequestCopy(status?: string) {
     return "Your previous request needs changes. Update the form and send it again.";
   }
 
+  if (status === "cancelled") {
+    return "Your previous request was cancelled. You can send a new request when you are ready.";
+  }
+
   if (status === "approved") {
     return "Your request was approved. Refresh or sign in again if your dashboard has not appeared yet.";
   }
 
-  return "Choose the participant space you need. Organizers validate every request before access is granted.";
+  return "This area is only for vendors, sponsors and partners. Visitors can use the public guide without creating an account.";
 }
 
 async function ParticipantAccessRequest() {
@@ -107,12 +111,13 @@ async function ParticipantAccessRequest() {
   }
 
   const existingRequest = await getAccessRequestForClerkUser(session.clerkUserId);
+  const canSubmitRequest = !existingRequest || existingRequest.status === "rejected" || existingRequest.status === "cancelled";
 
   return (
     <>
       <PageHeader
         eyebrow="Participant access"
-        title="Choose your workspace"
+        title="Vendor, sponsor or partner access"
         description={getAccessRequestCopy(existingRequest?.status)}
       />
       <section className="mx-auto grid w-full max-w-6xl gap-6 px-4 pb-10 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
@@ -133,75 +138,109 @@ async function ParticipantAccessRequest() {
               {existingRequest.reviewerNote ? (
                 <p className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-800">{existingRequest.reviewerNote}</p>
               ) : null}
+              {existingRequest.cancellationReason ? (
+                <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+                  Cancellation reason: {existingRequest.cancellationReason}
+                </p>
+              ) : null}
             </div>
           ) : null}
         </aside>
 
-        <form action={requestParticipantAccess} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-xl font-semibold text-acv-ink">Request access</h2>
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            {[
-              { value: "vendor", label: "Vendor", icon: Store, body: "Sell food, retail, craft or services from an assigned stand." },
-              { value: "sponsor", label: "Sponsor", icon: Sparkles, body: "Manage brand assets, activation plans and sponsor logistics." },
-              { value: "partner", label: "Partner", icon: Handshake, body: "Coordinate institutional, media, mobility or operational support." },
-            ].map((option) => (
-              <label className="rounded-lg border border-slate-200 bg-acv-paper p-4 text-sm" key={option.value}>
+        {canSubmitRequest ? (
+          <form action={requestParticipantAccess} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-xl font-semibold text-acv-ink">Request participant access</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Use this form only if your organization is joining the event as a vendor, sponsor or partner.
+              Public visitors should browse the public pages without signing up.
+            </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              {[
+                { value: "vendor", label: "Vendor", icon: Store, body: "Sell food, retail, craft or services from an assigned stand." },
+                { value: "sponsor", label: "Sponsor", icon: Sparkles, body: "Manage brand assets, activation plans and sponsor logistics." },
+                { value: "partner", label: "Partner", icon: Handshake, body: "Coordinate institutional, media, mobility or operational support." },
+              ].map((option) => (
+                <label className="rounded-lg border border-slate-200 bg-acv-paper p-4 text-sm" key={option.value}>
+                  <input
+                    className="sr-only peer"
+                    defaultChecked={option.value === existingRequest?.requestedRole}
+                    name="requestedRole"
+                    required
+                    type="radio"
+                    value={option.value}
+                  />
+                  <span className="flex items-center gap-2 font-semibold text-acv-ink peer-checked:text-acv-palm">
+                    <option.icon aria-hidden="true" className="size-5" />
+                    {option.label}
+                  </span>
+                  <span className="mt-2 block leading-6 text-slate-600">{option.body}</span>
+                </label>
+              ))}
+            </div>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-700">Organization name</span>
                 <input
-                  className="sr-only peer"
-                  defaultChecked={option.value === existingRequest?.requestedRole}
-                  name="requestedRole"
+                  className="rounded-md border border-slate-200 px-3 py-2 text-sm"
+                  defaultValue={existingRequest?.organizationName ?? ""}
+                  name="organizationName"
                   required
-                  type="radio"
-                  value={option.value}
                 />
-                <span className="flex items-center gap-2 font-semibold text-acv-ink peer-checked:text-acv-palm">
-                  <option.icon aria-hidden="true" className="size-5" />
-                  {option.label}
-                </span>
-                <span className="mt-2 block leading-6 text-slate-600">{option.body}</span>
               </label>
-            ))}
-          </div>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <label className="grid gap-2">
-              <span className="text-sm font-semibold text-slate-700">Organization name</span>
-              <input
-                className="rounded-md border border-slate-200 px-3 py-2 text-sm"
-                defaultValue={existingRequest?.organizationName ?? ""}
-                name="organizationName"
-                required
-              />
-            </label>
-            <label className="grid gap-2">
-              <span className="text-sm font-semibold text-slate-700">Contact name</span>
-              <input
-                className="rounded-md border border-slate-200 px-3 py-2 text-sm"
-                defaultValue={existingRequest?.contactName ?? session.name}
-                name="contactName"
-                required
-              />
-            </label>
-            <label className="grid gap-2">
-              <span className="text-sm font-semibold text-slate-700">Phone</span>
-              <input
-                className="rounded-md border border-slate-200 px-3 py-2 text-sm"
-                defaultValue={existingRequest?.phone ?? ""}
-                name="phone"
-              />
-            </label>
-            <label className="grid gap-2 sm:col-span-2">
-              <span className="text-sm font-semibold text-slate-700">Message</span>
-              <textarea
-                className="min-h-28 rounded-md border border-slate-200 px-3 py-2 text-sm"
-                defaultValue={existingRequest?.message ?? ""}
-                name="message"
-              />
-            </label>
-          </div>
-          <button className="mt-5 rounded-md bg-acv-palm px-4 py-2 text-sm font-bold text-white hover:bg-acv-palm/90">
-            Send request
-          </button>
-        </form>
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-700">Contact name</span>
+                <input
+                  className="rounded-md border border-slate-200 px-3 py-2 text-sm"
+                  defaultValue={existingRequest?.contactName ?? session.name}
+                  name="contactName"
+                  required
+                />
+              </label>
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-700">Phone</span>
+                <input
+                  className="rounded-md border border-slate-200 px-3 py-2 text-sm"
+                  defaultValue={existingRequest?.phone ?? ""}
+                  name="phone"
+                />
+              </label>
+              <label className="grid gap-2 sm:col-span-2">
+                <span className="text-sm font-semibold text-slate-700">Message</span>
+                <textarea
+                  className="min-h-28 rounded-md border border-slate-200 px-3 py-2 text-sm"
+                  defaultValue={existingRequest?.message ?? ""}
+                  name="message"
+                />
+              </label>
+            </div>
+            <button className="mt-5 rounded-md bg-acv-palm px-4 py-2 text-sm font-bold text-white hover:bg-acv-palm/90">
+              Send participant request
+            </button>
+          </form>
+        ) : (
+          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-xl font-semibold text-acv-ink">Request under review</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              The organizer team is validating this request. You can cancel it if the organization, role or details are wrong.
+            </p>
+            {existingRequest?.status === "pending" ? (
+              <form action={cancelParticipantAccessRequest} className="mt-5 grid gap-3 rounded-lg bg-slate-50 p-4">
+                <label className="grid gap-2">
+                  <span className="text-sm font-semibold text-slate-700">Reason for cancellation</span>
+                  <textarea
+                    className="min-h-24 rounded-md border border-slate-200 px-3 py-2 text-sm"
+                    name="cancellationReason"
+                    placeholder="Example: I selected the wrong role or used the wrong organization name."
+                    required
+                  />
+                </label>
+                <button className="w-fit rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-800 hover:bg-slate-100">
+                  Cancel request
+                </button>
+              </form>
+            ) : null}
+          </article>
+        )}
       </section>
     </>
   );

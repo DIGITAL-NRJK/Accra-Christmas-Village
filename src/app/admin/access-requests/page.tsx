@@ -51,6 +51,11 @@ export default async function AdminAccessRequestsPage() {
                 {request.reviewerNote ? (
                   <p className="mt-3 text-sm text-slate-500">{request.reviewerNote}</p>
                 ) : null}
+                {request.cancellationReason ? (
+                  <p className="mt-3 max-w-3xl rounded-lg bg-slate-50 p-3 text-sm leading-6 text-slate-700">
+                    Cancelled by participant: {request.cancellationReason}
+                  </p>
+                ) : null}
               </div>
               <StatusPill status={request.status} />
             </div>
