@@ -2,12 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { reviewDocument as persistDocumentReview } from "@/db/queries";
-import { getDemoSession } from "@/lib/auth";
+import { requireAnyRole } from "@/lib/auth";
 
 export async function approveDocument(formData: FormData) {
   const documentId = String(formData.get("documentId") ?? "");
-  const reviewerNote = String(formData.get("reviewerNote") ?? "Approved for V1 demo.");
-  const session = getDemoSession("admin");
+  const reviewerNote = String(formData.get("reviewerNote") ?? "Approved for event operations.");
+  const session = await requireAnyRole(["admin", "super_admin"]);
 
   if (!documentId || !session.user) {
     return;
@@ -21,7 +21,7 @@ export async function approveDocument(formData: FormData) {
 export async function rejectDocument(formData: FormData) {
   const documentId = String(formData.get("documentId") ?? "");
   const reviewerNote = String(formData.get("reviewerNote") ?? "");
-  const session = getDemoSession("admin");
+  const session = await requireAnyRole(["admin", "super_admin"]);
 
   if (!documentId || !session.user) {
     return;

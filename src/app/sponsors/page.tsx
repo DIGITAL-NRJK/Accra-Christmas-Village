@@ -2,13 +2,17 @@ import Link from "next/link";
 import { BadgeCheck, ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
-import { sponsors } from "@/lib/data";
+import { listAdminData } from "@/db/queries";
 
 export const metadata = {
   title: "Sponsors",
 };
 
-export default function SponsorsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function SponsorsPage() {
+  const { sponsors } = await listAdminData();
+
   return (
     <>
       <PageHeader
@@ -38,6 +42,14 @@ export default function SponsorsPage() {
             </Link>
           </article>
         ))}
+        {sponsors.length === 0 ? (
+          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:col-span-3">
+            <h2 className="text-xl font-semibold text-acv-ink">Sponsors will be announced soon</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Confirmed sponsor activations will appear here after organizer approval.
+            </p>
+          </article>
+        ) : null}
       </section>
     </>
   );

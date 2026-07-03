@@ -20,6 +20,7 @@ import { ProgressBar } from "@/components/progress-bar";
 import { StatusPill } from "@/components/status-pill";
 import { cancelParticipantAccessRequest, requestParticipantAccess } from "@/app/portal/actions";
 import { getAccessRequestForClerkUser } from "@/db/queries";
+import { getOrganizationById, getParticipantPlacement } from "@/db/queries";
 import { getCurrentAppSession, isParticipantRole } from "@/lib/auth";
 import {
   documents,
@@ -76,7 +77,7 @@ const roleConfig: Record<ParticipantRole, {
 };
 
 function getAnnouncementAudience(role: Role) {
-  return role === "sponsor" ? "sponsor" : "vendor";
+  return role === "sponsor" ? "sponsor" : role === "partner" ? "partner" : "vendor";
 }
 
 function getAccessRequestCopy(status?: string) {
@@ -252,32 +253,61 @@ export const metadata = {
   title: "Portal",
 };
 
-export default async function PortalPage() {
+type PortalPageProps = {
+  searchParams?: Promise<{
+    previewRole?: string;
+    organizationId?: string;
+  }>;
+};
+
+export default async function PortalPage({ searchParams }: PortalPageProps) {
   const session = await getCurrentAppSession();
+  const params = await searchParams;
 
   if (!session) {
     redirect("/sign-in");
   }
 
-  if (!isParticipantRole(session.role) || !session.organization) {
+  const requestedPreviewRole = params?.previewRole as Role | undefined;
+  const previewRole = requestedPreviewRole && isParticipantRole(requestedPreviewRole)
+    ? requestedPreviewRole
+    : null;
+  const isAdminPreview =
+    (session.role === "admin" || session.role === "super_admin") &&
+    Boolean(previewRole);
+  const previewOrganization = isAdminPreview
+    ? await getOrganizationById(params?.organizationId ?? null)
+    : null;
+  const effectiveRole: Role = isAdminPreview && previewRole ? previewRole : session.role;
+  const effectiveOrganization = previewOrganization ?? session.organization;
+
+  if (!isParticipantRole(effectiveRole) || !effectiveOrganization) {
     return <ParticipantAccessRequest />;
   }
 
-  const config = roleConfig[session.role];
-  const portalRole = getAnnouncementAudience(session.role);
-  const organization = session.organization;
-  const vendor = getVendorByOrganization(organization.id);
-  const sponsor = getSponsorByOrganization(organization.id);
-  const stand = getStand(vendor?.standId ?? sponsor?.standId ?? null);
-  const zone = stand ? getZone(stand.zoneId) : undefined;
+  const config = roleConfig[effectiveRole];
+  const portalRole = getAnnouncementAudience(effectiveRole);
+  const organization = effectiveOrganization;
+  const placement = await getParticipantPlacement(organization.id);
+  const vendor = placement.vendor ?? getVendorByOrganization(organization.id);
+  const sponsor = placement.sponsor ?? getSponsorByOrganization(organization.id);
+  const stand = placement.stand ?? getStand(vendor?.standId ?? sponsor?.standId ?? null);
+  const zone = placement.zone ?? (stand ? getZone(stand.zoneId) : undefined);
   const organizationDocuments = getDocumentsForOrganization(organization.id);
   const pendingDocuments = documents.filter((document) => document.status === "submitted").length;
   const progress = getOnboardingProgress(organization.id);
-  const locationValue = stand?.code ?? (session.role === "partner" ? "Operations" : "TBC");
+  const locationValue = stand?.code ?? (effectiveRole === "partner" ? "Operations" : "TBC");
 
   return (
     <>
       <AnnouncementBanner audience={portalRole} />
+      {isAdminPreview ? (
+        <div className="border-b border-acv-gold/30 bg-acv-gold/10">
+          <div className="mx-auto w-full max-w-6xl px-4 py-3 text-sm font-semibold text-acv-ink sm:px-6 lg:px-8">
+            Admin preview: viewing {organization.name} as {effectiveRole}.
+          </div>
+        </div>
+      ) : null}
       <PageHeader
         eyebrow={config.eyebrow}
         title={`${organization.name} ${config.title}`}
@@ -298,14 +328,14 @@ export default async function PortalPage() {
           value={organizationDocuments.length}
         />
         <MetricCard
-          detail={session.role === "sponsor" ? "Activation review queue." : "Organizer review queue."}
+          detail={effectiveRole === "sponsor" ? "Activation review queue." : "Organizer review queue."}
           icon={MessageSquare}
           label="Pending reviews"
           value={pendingDocuments}
         />
         <MetricCard
-          detail={zone?.name ?? (session.role === "partner" ? "Partner coordination" : "Location not assigned")}
-          icon={session.role === "partner" ? RadioTower : Store}
+          detail={zone?.name ?? (effectiveRole === "partner" ? "Partner coordination" : "Location not assigned")}
+          icon={effectiveRole === "partner" ? RadioTower : Store}
           label={config.locationLabel}
           value={locationValue}
         />
@@ -346,7 +376,7 @@ export default async function PortalPage() {
                 {config.locationLabel}
               </p>
               <h2 className="mt-2 text-2xl font-semibold text-acv-ink">
-                {stand ? `${stand.code} / ${stand.name}` : session.role === "partner" ? "Organizer coordination" : "Pending allocation"}
+                {stand ? `${stand.code} / ${stand.name}` : effectiveRole === "partner" ? "Organizer coordination" : "Pending allocation"}
               </h2>
               <p className="mt-3 leading-7 text-slate-600">
                 {stand

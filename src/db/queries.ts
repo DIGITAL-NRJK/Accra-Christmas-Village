@@ -1,6 +1,18 @@
-import { desc, eq, or } from "drizzle-orm";
+import { asc, desc, eq, or } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { accessRequests, documents, organizations, users } from "@/db/schema";
+import {
+  accessRequests,
+  announcements,
+  documentRequirements,
+  documents,
+  events,
+  organizations,
+  sponsors,
+  stands,
+  users,
+  vendors,
+  zones,
+} from "@/db/schema";
 import type { DocumentStatus, ParticipantRole, Role } from "@/lib/types";
 
 const participantRoles: ParticipantRole[] = ["vendor", "sponsor", "partner"];
@@ -12,6 +24,19 @@ function isParticipantRole(role: string): role is ParticipantRole {
 
 function normalizeEmail(email: string | null) {
   return email?.trim().toLowerCase() || null;
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    || crypto.randomUUID();
+}
+
+function toDateInput(value: FormDataEntryValue | null) {
+  return String(value ?? "").trim();
 }
 
 export type SaveDocumentMetadataInput = {
@@ -291,6 +316,58 @@ export async function listAccessRequests() {
   return db.select().from(accessRequests).orderBy(desc(accessRequests.createdAt));
 }
 
+export async function ensureParticipantRecord(
+  organizationId: string,
+  role: ParticipantRole,
+  organizationName: string,
+) {
+  const db = getDb();
+
+  if (role === "vendor") {
+    const [existingVendor] = await db
+      .select()
+      .from(vendors)
+      .where(eq(vendors.organizationId, organizationId))
+      .limit(1);
+
+    if (!existingVendor) {
+      await db.insert(vendors).values({
+        id: crypto.randomUUID(),
+        organizationId,
+        tradingName: organizationName,
+        category: "Pending classification",
+        standId: null,
+        onboardingStatus: "not_started",
+        complianceStatus: "not_started",
+        approved: true,
+      });
+    }
+  }
+
+  if (role === "sponsor") {
+    const [existingSponsor] = await db
+      .select()
+      .from(sponsors)
+      .where(eq(sponsors.organizationId, organizationId))
+      .limit(1);
+
+    if (!existingSponsor) {
+      await db.insert(sponsors).values({
+        id: crypto.randomUUID(),
+        organizationId,
+        slug: slugify(organizationName),
+        brandName: organizationName,
+        packageLevel: "community",
+        activationLocation: "Pending allocation",
+        standId: null,
+        status: "confirmed",
+        summary: "Sponsor profile created from approved access request.",
+        activationPlan: "Activation plan pending organizer setup.",
+      });
+    }
+  }
+}
+
 export async function approveAccessRequest(
   requestId: string,
   reviewerNote: string,
@@ -372,6 +449,8 @@ export async function approveAccessRequest(
     });
   }
 
+  await ensureParticipantRecord(organizationId, request.requestedRole, request.organizationName);
+
   await db
     .update(accessRequests)
     .set({
@@ -432,4 +511,269 @@ export async function cancelAccessRequestForClerkUser(clerkUserId: string, cance
       updatedAt: new Date(),
     })
     .where(eq(accessRequests.clerkUserId, clerkUserId));
+}
+
+export async function listAdminData() {
+  if (!process.env.DATABASE_URL) {
+    return {
+      accessRequests: [],
+      announcements: [],
+      documents: [],
+      documentRequirements: [],
+      events: [],
+      organizations: [],
+      sponsors: [],
+      stands: [],
+      users: [],
+      vendors: [],
+      zones: [],
+    };
+  }
+
+  const db = getDb();
+
+  const [
+    accessRequestRows,
+    announcementRows,
+    documentRows,
+    documentRequirementRows,
+    eventRows,
+    organizationRows,
+    sponsorRows,
+    standRows,
+    userRows,
+    vendorRows,
+    zoneRows,
+  ] = await Promise.all([
+    db.select().from(accessRequests).orderBy(desc(accessRequests.createdAt)),
+    db.select().from(announcements).orderBy(desc(announcements.createdAt)),
+    db.select().from(documents).orderBy(desc(documents.createdAt)),
+    db.select().from(documentRequirements).orderBy(asc(documentRequirements.sortOrder)),
+    db.select().from(events).orderBy(asc(events.day), asc(events.startsAt)),
+    db.select().from(organizations).orderBy(asc(organizations.name)),
+    db.select().from(sponsors).orderBy(asc(sponsors.brandName)),
+    db.select().from(stands).orderBy(asc(stands.code)),
+    db.select().from(users).orderBy(asc(users.fullName)),
+    db.select().from(vendors).orderBy(asc(vendors.tradingName)),
+    db.select().from(zones).orderBy(asc(zones.name)),
+  ]);
+
+  return {
+    accessRequests: accessRequestRows,
+    announcements: announcementRows,
+    documents: documentRows,
+    documentRequirements: documentRequirementRows,
+    events: eventRows,
+    organizations: organizationRows,
+    sponsors: sponsorRows,
+    stands: standRows,
+    users: userRows,
+    vendors: vendorRows,
+    zones: zoneRows,
+  };
+}
+
+export async function listPublishedEvents() {
+  if (!process.env.DATABASE_URL) {
+    return [];
+  }
+
+  const db = getDb();
+
+  return db
+    .select()
+    .from(events)
+    .where(eq(events.published, true))
+    .orderBy(asc(events.day), asc(events.startsAt));
+}
+
+export async function listPublishedAnnouncements(audience: string) {
+  if (!process.env.DATABASE_URL) {
+    return [];
+  }
+
+  const db = getDb();
+  const now = new Date();
+  const rows = await db.select().from(announcements).orderBy(desc(announcements.createdAt));
+
+  return rows.filter((announcement) => {
+    const audienceMatches = announcement.audience === "all" || announcement.audience === audience;
+    const withinWindow =
+      announcement.startsAt <= now &&
+      (!announcement.endsAt || announcement.endsAt >= now);
+
+    return announcement.published && audienceMatches && withinWindow;
+  });
+}
+
+export async function getParticipantPlacement(organizationId: string) {
+  if (!process.env.DATABASE_URL) {
+    return { vendor: null, sponsor: null, stand: null, zone: null };
+  }
+
+  const db = getDb();
+  const [vendor] = await db.select().from(vendors).where(eq(vendors.organizationId, organizationId)).limit(1);
+  const [sponsor] = await db.select().from(sponsors).where(eq(sponsors.organizationId, organizationId)).limit(1);
+  const standId = vendor?.standId ?? sponsor?.standId ?? null;
+  const [stand] = standId ? await db.select().from(stands).where(eq(stands.id, standId)).limit(1) : [];
+  const [zone] = stand ? await db.select().from(zones).where(eq(zones.id, stand.zoneId)).limit(1) : [];
+
+  return {
+    vendor: vendor ?? null,
+    sponsor: sponsor ?? null,
+    stand: stand ?? null,
+    zone: zone ?? null,
+  };
+}
+
+export type AssignStandInput = {
+  standId: string;
+  participantType: "vendor" | "sponsor" | "none";
+  organizationId: string;
+};
+
+export async function assignStand(input: AssignStandInput) {
+  if (!process.env.DATABASE_URL) {
+    console.info("Skipped stand assignment because DATABASE_URL is not set.", input);
+    return;
+  }
+
+  const db = getDb();
+
+  await db.update(vendors).set({ standId: null }).where(eq(vendors.standId, input.standId));
+  await db.update(sponsors).set({ standId: null, activationLocation: "Pending allocation" }).where(eq(sponsors.standId, input.standId));
+
+  if (input.participantType === "none" || !input.organizationId) {
+    await db.update(stands).set({ status: "available" }).where(eq(stands.id, input.standId));
+    return;
+  }
+
+  const [organization] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, input.organizationId))
+    .limit(1);
+
+  if (!organization) {
+    return;
+  }
+
+  if (input.participantType === "vendor") {
+    const [existingVendor] = await db
+      .select()
+      .from(vendors)
+      .where(eq(vendors.organizationId, input.organizationId))
+      .limit(1);
+
+    if (existingVendor) {
+      await db.update(vendors).set({ standId: input.standId, approved: true }).where(eq(vendors.id, existingVendor.id));
+    } else {
+      await db.insert(vendors).values({
+        id: crypto.randomUUID(),
+        organizationId: input.organizationId,
+        tradingName: organization.name,
+        category: "Pending classification",
+        standId: input.standId,
+        onboardingStatus: "in_progress",
+        complianceStatus: "in_progress",
+        approved: true,
+      });
+    }
+  }
+
+  if (input.participantType === "sponsor") {
+    const [stand] = await db.select().from(stands).where(eq(stands.id, input.standId)).limit(1);
+    const activationLocation = stand ? `${stand.code} / ${stand.name}` : "Assigned activation";
+    const [existingSponsor] = await db
+      .select()
+      .from(sponsors)
+      .where(eq(sponsors.organizationId, input.organizationId))
+      .limit(1);
+
+    if (existingSponsor) {
+      await db
+        .update(sponsors)
+        .set({ standId: input.standId, activationLocation, status: "active" })
+        .where(eq(sponsors.id, existingSponsor.id));
+    } else {
+      await db.insert(sponsors).values({
+        id: crypto.randomUUID(),
+        organizationId: input.organizationId,
+        slug: slugify(organization.name),
+        brandName: organization.name,
+        packageLevel: "community",
+        activationLocation,
+        standId: input.standId,
+        status: "active",
+        summary: "Sponsor profile created during stand assignment.",
+        activationPlan: "Activation plan pending organizer setup.",
+      });
+    }
+  }
+
+  await db.update(stands).set({ status: "assigned" }).where(eq(stands.id, input.standId));
+}
+
+export type CreateProgrammeItemInput = {
+  title: string;
+  day: string;
+  startsAt: string;
+  endsAt: string;
+  category: string;
+  location: string;
+  audience: string;
+  description: string;
+  published: boolean;
+};
+
+export async function createProgrammeItem(input: CreateProgrammeItemInput) {
+  if (!process.env.DATABASE_URL) {
+    console.info("Skipped programme item creation because DATABASE_URL is not set.", input);
+    return;
+  }
+
+  const db = getDb();
+
+  await db.insert(events).values({
+    id: crypto.randomUUID(),
+    ...input,
+  });
+}
+
+export async function updateProgrammePublication(eventId: string, published: boolean) {
+  if (!process.env.DATABASE_URL || !eventId) {
+    return;
+  }
+
+  const db = getDb();
+
+  await db.update(events).set({ published }).where(eq(events.id, eventId));
+}
+
+export type CreateAnnouncementInput = {
+  title: string;
+  body: string;
+  audience: string;
+  priority: string;
+  published: boolean;
+};
+
+export async function createAnnouncement(input: CreateAnnouncementInput) {
+  if (!process.env.DATABASE_URL) {
+    console.info("Skipped announcement creation because DATABASE_URL is not set.", input);
+    return;
+  }
+
+  const db = getDb();
+
+  await db.insert(announcements).values({
+    id: crypto.randomUUID(),
+    ...input,
+    startsAt: new Date(),
+    endsAt: null,
+  });
+}
+
+export function getDateValue(formData: FormData, name: string) {
+  return toDateInput(formData.get(name));
 }

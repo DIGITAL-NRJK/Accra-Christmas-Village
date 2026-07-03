@@ -2,37 +2,8 @@ import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { getOrganizationById, syncClerkUserProfile } from "@/db/queries";
-import { getOrganization, organizations, users } from "@/lib/data";
-import type { Organization, ParticipantRole, Role, User } from "@/lib/types";
-
-export type DemoSession = {
-  role: Role;
-  user: User | null;
-  organization: Organization | undefined;
-};
-
-const demoUserByRole: Partial<Record<Role, string>> = {
-  vendor: "user-demo-vendor",
-  sponsor: "user-demo-sponsor",
-  admin: "user-demo-admin",
-  super_admin: "user-demo-admin",
-};
-
-export function getDemoSession(role: Role = "visitor"): DemoSession {
-  const userId = demoUserByRole[role];
-  const user = userId ? users.find((candidate) => candidate.id === userId) ?? null : null;
-  const organization = user ? getOrganization(user.organizationId) : undefined;
-
-  return {
-    role,
-    user,
-    organization,
-  };
-}
-
-export function getDemoAdminOrganization() {
-  return organizations.find((organization) => organization.type === "organizer");
-}
+import { getOrganization } from "@/lib/data";
+import type { Organization, ParticipantRole, Role } from "@/lib/types";
 
 type DatabaseUser = Awaited<ReturnType<typeof syncClerkUserProfile>>;
 

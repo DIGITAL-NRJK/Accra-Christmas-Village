@@ -2,6 +2,7 @@ import { NavTabs } from "@/components/nav-tabs";
 
 const adminNav = [
   { href: "/admin", label: "Dashboard" },
+  { href: "/admin/preview", label: "Preview" },
   { href: "/admin/access-requests", label: "Access" },
   { href: "/admin/vendors", label: "Vendors" },
   { href: "/admin/sponsors", label: "Sponsors" },

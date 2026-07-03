@@ -49,7 +49,7 @@ pnpm dev
 
 8. Deploy to Netlify. Connect the GitHub repo, add `DATABASE_URL`, and let Netlify run `pnpm build` using `netlify.toml`.
 
-## Demo Access
+## Access And Roles
 
 The public site is available without an account. The participant portal and admin workspace are protected by Clerk authentication and Accra Christmas Village roles stored in Neon.
 
@@ -67,6 +67,18 @@ To create missing `visitor` rows for people who already submitted participant ac
 
 ```bash
 pnpm db:backfill-access-users
+```
+
+To create missing vendor/sponsor operational records for already approved access requests:
+
+```bash
+pnpm db:backfill-participant-records
+```
+
+To remove seeded sample participants, sponsors, vendors, programme items and announcements while preserving site zones and stand inventory:
+
+```bash
+pnpm db:clear-demo-data
 ```
 
 ## Document Uploads

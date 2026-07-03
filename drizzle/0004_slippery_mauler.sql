@@ -1,0 +1,1 @@
+ALTER TABLE "vendors" ALTER COLUMN "stand_id" DROP NOT NULL;

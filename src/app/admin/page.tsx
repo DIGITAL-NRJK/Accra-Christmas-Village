@@ -12,25 +12,24 @@ import { AdminNav } from "@/components/admin-nav";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
-import { listAccessRequests } from "@/db/queries";
-import { documents, incidents, programmeItems, sponsors, stands, users, vendors } from "@/lib/data";
+import { listAdminData } from "@/db/queries";
 
 export const metadata = {
   title: "Admin",
 };
 
 export default async function AdminPage() {
-  const accessRequests = await listAccessRequests();
+  const { accessRequests, documents, events, sponsors, stands, users, vendors } = await listAdminData();
   const pendingAccessRequests = accessRequests.filter((request) => request.status === "pending").length;
   const pendingDocuments = documents.filter((document) => document.status === "submitted").length;
   const approvedDocuments = documents.filter((document) => document.status === "approved").length;
   const missingDocuments = documents.filter((document) => document.status === "missing").length;
-  const upcomingProgramme = programmeItems.filter((item) => item.published).length;
+  const upcomingProgramme = events.filter((item) => item.published).length;
   const vendorUsers = users.filter((user) => user.role === "vendor").length;
   const sponsorUsers = users.filter((user) => user.role === "sponsor").length;
   const partnerUsers = users.filter((user) => user.role === "partner").length;
   const assignedStands = stands.filter((stand) => stand.status === "assigned").length;
-  const activeIncidents = incidents.filter((incident) => incident.status !== "resolved").length;
+  const activeIncidents = 0;
 
   return (
     <>
@@ -105,7 +104,7 @@ export default async function AdminPage() {
         <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="text-xl font-semibold text-acv-ink">Upcoming programme</h2>
           <div className="mt-4 grid gap-3">
-            {programmeItems.slice(0, 4).map((item) => (
+            {events.slice(0, 4).map((item) => (
               <div className="rounded-lg bg-acv-paper p-3" key={item.id}>
                 <p className="font-semibold text-acv-ink">{item.title}</p>
                 <p className="mt-1 text-sm text-slate-600">

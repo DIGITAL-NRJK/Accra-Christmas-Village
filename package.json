@@ -12,6 +12,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:bootstrap-admin": "tsx src/db/bootstrap-admin.ts",
     "db:backfill-access-users": "tsx src/db/backfill-access-users.ts",
+    "db:backfill-participant-records": "tsx src/db/backfill-participant-records.ts",
+    "db:clear-demo-data": "tsx src/db/clear-demo-data.ts",
     "db:seed": "tsx src/db/seed.ts"
   },
   "packageManager": "pnpm@10.18.3",

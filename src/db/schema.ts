@@ -148,9 +148,7 @@ export const vendors = pgTable(
       .references(() => organizations.id),
     tradingName: text("trading_name").notNull(),
     category: text("category").notNull(),
-    standId: text("stand_id")
-      .notNull()
-      .references(() => stands.id),
+    standId: text("stand_id").references(() => stands.id),
     onboardingStatus: complianceStatusEnum("onboarding_status").notNull(),
     complianceStatus: complianceStatusEnum("compliance_status").notNull(),
     approved: boolean("approved").notNull().default(false),

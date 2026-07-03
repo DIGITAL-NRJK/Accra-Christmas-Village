@@ -1,13 +1,15 @@
 import { AdminNav } from "@/components/admin-nav";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
-import { getOrganization, getStand, getZone, vendors } from "@/lib/data";
+import { listAdminData } from "@/db/queries";
 
 export const metadata = {
   title: "Vendors",
 };
 
-export default function AdminVendorsPage() {
+export default async function AdminVendorsPage() {
+  const { organizations, stands, vendors, zones } = await listAdminData();
+
   return (
     <>
       <PageHeader
@@ -31,9 +33,9 @@ export default function AdminVendorsPage() {
             </thead>
             <tbody>
               {vendors.map((vendor) => {
-                const organization = getOrganization(vendor.organizationId);
-                const stand = getStand(vendor.standId);
-                const zone = stand ? getZone(stand.zoneId) : undefined;
+                const organization = organizations.find((candidate) => candidate.id === vendor.organizationId);
+                const stand = stands.find((candidate) => candidate.id === vendor.standId);
+                const zone = zones.find((candidate) => candidate.id === stand?.zoneId);
 
                 return (
                   <tr className="border-t border-slate-100" key={vendor.id}>
@@ -43,7 +45,7 @@ export default function AdminVendorsPage() {
                     </td>
                     <td className="px-4 py-3">{vendor.category}</td>
                     <td className="px-4 py-3">
-                      {stand?.code} / {zone?.name}
+                      {stand ? `${stand.code} / ${zone?.name ?? "Unknown zone"}` : "Unassigned"}
                     </td>
                     <td className="px-4 py-3">
                       <StatusPill status={vendor.onboardingStatus} />
@@ -55,6 +57,13 @@ export default function AdminVendorsPage() {
                   </tr>
                 );
               })}
+              {vendors.length === 0 ? (
+                <tr>
+                  <td className="px-4 py-6 text-sm text-slate-600" colSpan={6}>
+                    No vendor records yet. Approve vendor requests or assign stands to create operational records.
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
