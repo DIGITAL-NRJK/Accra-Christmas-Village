@@ -69,3 +69,14 @@ pnpm db:generate
 pnpm db:migrate
 pnpm db:seed
 ```
+
+## GitHub + Neon Preview Branches
+
+Pull requests create a temporary Neon branch named `preview/pr-<number>-<branch>`.
+The workflow applies Drizzle migrations to that preview database and deletes the
+Neon branch when the PR closes.
+
+Configure these in GitHub before opening PRs:
+
+- Repository variable: `NEON_PROJECT_ID`
+- Repository secret: `NEON_API_KEY`
