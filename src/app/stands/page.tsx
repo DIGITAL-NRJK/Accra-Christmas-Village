@@ -1,15 +1,19 @@
 import { PageHeader } from "@/components/page-header";
 import { StandDirectory } from "@/components/stand-directory";
-import { getZone, stands, vendors } from "@/lib/data";
+import { listAdminData } from "@/db/queries";
 
 export const metadata = {
   title: "Stands",
 };
 
-export default function StandsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function StandsPage() {
+  const { sponsors, stands, vendors, zones } = await listAdminData();
   const items = stands.map((stand) => {
     const vendor = vendors.find((candidate) => candidate.standId === stand.id);
-    const zone = getZone(stand.zoneId);
+    const sponsor = sponsors.find((candidate) => candidate.standId === stand.id);
+    const zone = zones.find((candidate) => candidate.id === stand.zoneId);
 
     return {
       id: stand.id,
@@ -17,7 +21,7 @@ export default function StandsPage() {
       name: stand.name,
       zoneName: zone?.name ?? "Unassigned",
       category: stand.category,
-      vendorName: vendor?.tradingName ?? "Available",
+      vendorName: vendor?.tradingName ?? sponsor?.brandName ?? "Available",
       powerAmps: stand.powerAmps,
       status: stand.status,
     };

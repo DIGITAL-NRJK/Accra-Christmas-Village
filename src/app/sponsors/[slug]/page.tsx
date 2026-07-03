@@ -3,18 +3,15 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, MapPin, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
-import { getStand, getZone, sponsors } from "@/lib/data";
+import { listAdminData } from "@/db/queries";
 
 type SponsorPageProps = {
   params: Promise<{ slug: string }>;
 };
 
-export function generateStaticParams() {
-  return sponsors.map((sponsor) => ({ slug: sponsor.slug }));
-}
-
 export async function generateMetadata({ params }: SponsorPageProps) {
   const { slug } = await params;
+  const { sponsors } = await listAdminData();
   const sponsor = sponsors.find((candidate) => candidate.slug === slug);
 
   return {
@@ -24,14 +21,15 @@ export async function generateMetadata({ params }: SponsorPageProps) {
 
 export default async function SponsorActivationPage({ params }: SponsorPageProps) {
   const { slug } = await params;
+  const { sponsors, stands, zones } = await listAdminData();
   const sponsor = sponsors.find((candidate) => candidate.slug === slug);
 
   if (!sponsor) {
     notFound();
   }
 
-  const stand = getStand(sponsor.standId);
-  const zone = stand ? getZone(stand.zoneId) : undefined;
+  const stand = stands.find((candidate) => candidate.id === sponsor.standId);
+  const zone = zones.find((candidate) => candidate.id === stand?.zoneId);
 
   return (
     <>

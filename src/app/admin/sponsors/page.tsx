@@ -1,13 +1,15 @@
 import { AdminNav } from "@/components/admin-nav";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
-import { getOrganization, sponsors } from "@/lib/data";
+import { listAdminData } from "@/db/queries";
 
 export const metadata = {
   title: "Sponsor Admin",
 };
 
-export default function AdminSponsorsPage() {
+export default async function AdminSponsorsPage() {
+  const { organizations, sponsors } = await listAdminData();
+
   return (
     <>
       <PageHeader
@@ -18,7 +20,7 @@ export default function AdminSponsorsPage() {
       <AdminNav activeHref="/admin/sponsors" />
       <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 pb-10 sm:px-6 lg:grid-cols-3 lg:px-8">
         {sponsors.map((sponsor) => {
-          const organization = getOrganization(sponsor.organizationId);
+          const organization = organizations.find((candidate) => candidate.id === sponsor.organizationId);
 
           return (
             <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm" key={sponsor.id}>
@@ -34,6 +36,14 @@ export default function AdminSponsorsPage() {
             </article>
           );
         })}
+        {sponsors.length === 0 ? (
+          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:col-span-3">
+            <h2 className="text-xl font-semibold text-acv-ink">No sponsor records yet</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Approve sponsor requests to create sponsor profiles, then assign activation locations from Stand allocation.
+            </p>
+          </article>
+        ) : null}
       </section>
     </>
   );

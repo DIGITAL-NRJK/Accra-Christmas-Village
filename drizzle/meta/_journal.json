@@ -29,6 +29,13 @@
       "when": 1783094478238,
       "tag": "0003_sudden_wallflower",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783105342067,
+      "tag": "0004_slippery_mauler",
+      "breakpoints": true
     }
   ]
 }

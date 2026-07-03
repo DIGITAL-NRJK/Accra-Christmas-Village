@@ -1,13 +1,15 @@
 import { AdminNav } from "@/components/admin-nav";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
-import { documents, getOrganization, getRequirement, vendors } from "@/lib/data";
+import { listAdminData } from "@/db/queries";
 
 export const metadata = {
   title: "Compliance",
 };
 
-export default function AdminCompliancePage() {
+export default async function AdminCompliancePage() {
+  const { documentRequirements, documents, organizations, vendors } = await listAdminData();
+
   return (
     <>
       <PageHeader
@@ -18,7 +20,7 @@ export default function AdminCompliancePage() {
       <AdminNav activeHref="/admin/compliance" />
       <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 pb-10 sm:px-6 lg:px-8">
         {vendors.map((vendor) => {
-          const organization = getOrganization(vendor.organizationId);
+          const organization = organizations.find((candidate) => candidate.id === vendor.organizationId);
           const vendorDocuments = documents.filter((document) => document.organizationId === vendor.organizationId);
 
           return (
@@ -32,7 +34,7 @@ export default function AdminCompliancePage() {
               </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {vendorDocuments.map((document) => {
-                  const requirement = getRequirement(document.requirementId);
+                  const requirement = documentRequirements.find((candidate) => candidate.id === document.requirementId);
 
                   return (
                     <div className="rounded-lg border border-slate-200 bg-acv-paper p-3" key={document.id}>
@@ -47,6 +49,14 @@ export default function AdminCompliancePage() {
             </article>
           );
         })}
+        {vendors.length === 0 ? (
+          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-xl font-semibold text-acv-ink">No vendor compliance records yet</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Vendor compliance appears after a vendor request is approved.
+            </p>
+          </article>
+        ) : null}
       </section>
     </>
   );

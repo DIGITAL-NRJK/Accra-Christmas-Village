@@ -1,8 +1,8 @@
 import { MessageSquareText } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { PortalNav } from "@/components/portal-nav";
+import { listPublishedAnnouncements } from "@/db/queries";
 import { requireAnyRole } from "@/lib/auth";
-import { getPublishedAnnouncements } from "@/lib/data";
 
 export const metadata = {
   title: "Messages",
@@ -10,8 +10,8 @@ export const metadata = {
 
 export default async function MessagesPage() {
   const session = await requireAnyRole(["vendor", "sponsor", "partner"]);
-  const audience = session.role === "sponsor" ? "sponsor" : "vendor";
-  const messages = getPublishedAnnouncements(audience);
+  const audience = session.role === "sponsor" ? "sponsor" : session.role === "partner" ? "partner" : "vendor";
+  const messages = await listPublishedAnnouncements(audience);
 
   return (
     <>
@@ -36,6 +36,14 @@ export default async function MessagesPage() {
             </div>
           </article>
         ))}
+        {messages.length === 0 ? (
+          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-xl font-semibold text-acv-ink">No organizer messages yet</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              New announcements for your role will appear here.
+            </p>
+          </article>
+        ) : null}
       </section>
     </>
   );

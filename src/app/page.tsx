@@ -11,7 +11,7 @@ import {
 import { AnnouncementBanner } from "@/components/announcement-banner";
 import { MetricCard } from "@/components/metric-card";
 import { VillageMap } from "@/components/village-map";
-import { programmeItems, sponsors, stands, vendors } from "@/lib/data";
+import { listAdminData } from "@/db/queries";
 
 const quickLinks = [
   {
@@ -40,7 +40,11 @@ const quickLinks = [
   },
 ];
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const { events, sponsors, stands, vendors } = await listAdminData();
+
   return (
     <>
       <AnnouncementBanner />
@@ -109,7 +113,7 @@ export default function Home() {
           detail="Published moments across music, family and operations."
           icon={CalendarDays}
           label="Programme"
-          value={programmeItems.length}
+          value={events.filter((event) => event.published).length}
         />
         <MetricCard
           detail="Confirmed sponsor activations."
@@ -162,9 +166,19 @@ export default function Home() {
               <article className="rounded-lg border border-slate-200 p-4 shadow-sm" key={vendor.id}>
                 <p className="text-sm font-semibold text-acv-clay">{vendor.category}</p>
                 <h3 className="mt-2 text-xl font-semibold text-acv-ink">{vendor.tradingName}</h3>
-                <p className="mt-2 text-sm text-slate-600">Assigned stand {vendor.standId.replace("stand-", "").toUpperCase()}</p>
+                <p className="mt-2 text-sm text-slate-600">
+                  Assigned stand {vendor.standId ? vendor.standId.replace("stand-", "").toUpperCase() : "TBC"}
+                </p>
               </article>
             ))}
+            {vendors.length === 0 ? (
+              <article className="rounded-lg border border-slate-200 p-4 shadow-sm sm:col-span-3">
+                <h3 className="text-xl font-semibold text-acv-ink">Vendors will be announced soon</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Approved vendors and assigned stands will appear here after organizer setup.
+                </p>
+              </article>
+            ) : null}
           </div>
         </div>
       </section>

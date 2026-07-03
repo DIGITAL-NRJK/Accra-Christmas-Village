@@ -67,7 +67,7 @@ export type Vendor = {
   organizationId: string;
   tradingName: string;
   category: string;
-  standId: string;
+  standId: string | null;
   onboardingStatus: ComplianceStatus;
   complianceStatus: ComplianceStatus;
   approved: boolean;
@@ -92,7 +92,7 @@ export type ProgrammeItem = {
   day: string;
   startsAt: string;
   endsAt: string;
-  category: ProgrammeCategory;
+  category: string;
   location: string;
   audience: string;
   description: string;

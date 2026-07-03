@@ -2,13 +2,15 @@ import { AdminNav } from "@/components/admin-nav";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
 import { approveDocument, rejectDocument } from "@/app/admin/documents/actions";
-import { documents, getOrganization, getRequirement } from "@/lib/data";
+import { listAdminData } from "@/db/queries";
 
 export const metadata = {
   title: "Document Review",
 };
 
-export default function AdminDocumentsPage() {
+export default async function AdminDocumentsPage() {
+  const { documentRequirements, documents, organizations } = await listAdminData();
+
   return (
     <>
       <PageHeader
@@ -19,8 +21,8 @@ export default function AdminDocumentsPage() {
       <AdminNav activeHref="/admin/documents" />
       <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 pb-10 sm:px-6 lg:px-8">
         {documents.map((document) => {
-          const organization = getOrganization(document.organizationId);
-          const requirement = getRequirement(document.requirementId);
+          const organization = organizations.find((candidate) => candidate.id === document.organizationId);
+          const requirement = documentRequirements.find((candidate) => candidate.id === document.requirementId);
 
           return (
             <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm" key={document.id}>
@@ -62,6 +64,14 @@ export default function AdminDocumentsPage() {
             </article>
           );
         })}
+        {documents.length === 0 ? (
+          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-xl font-semibold text-acv-ink">No documents yet</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Submitted participant documents will appear here for approval or rejection.
+            </p>
+          </article>
+        ) : null}
       </section>
     </>
   );

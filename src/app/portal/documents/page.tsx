@@ -3,8 +3,8 @@ import { PageHeader } from "@/components/page-header";
 import { PortalNav } from "@/components/portal-nav";
 import { StatusPill } from "@/components/status-pill";
 import { uploadDocument } from "@/app/portal/documents/actions";
+import { listAdminData } from "@/db/queries";
 import { requireAnyRole } from "@/lib/auth";
-import { documentRequirements, getDocumentsForOrganization } from "@/lib/data";
 
 export const metadata = {
   title: "Documents",
@@ -13,8 +13,11 @@ export const metadata = {
 export default async function DocumentsPage() {
   const session = await requireAnyRole(["vendor", "sponsor", "partner"]);
   const organization = session.organization;
-  const documents = organization ? getDocumentsForOrganization(organization.id) : [];
-  const requirementType = session.role === "sponsor" ? "sponsor" : "vendor";
+  const { documentRequirements, documents: allDocuments } = await listAdminData();
+  const documents = organization
+    ? allDocuments.filter((document) => document.organizationId === organization.id)
+    : [];
+  const requirementType = session.role === "sponsor" ? "sponsor" : session.role === "partner" ? "partner" : "vendor";
   const requirements = documentRequirements.filter(
     (requirement) => requirement.organizationType === requirementType,
   );
