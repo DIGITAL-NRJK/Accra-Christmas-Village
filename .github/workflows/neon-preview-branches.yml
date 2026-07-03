@@ -68,13 +68,13 @@ jobs:
       - name: Run migrations on Neon preview branch
         run: pnpm db:migrate
         env:
-          DATABASE_URL: ${{ steps.create_neon_branch.outputs.db_url_with_pooler }}
+          DATABASE_URL: ${{ steps.create_neon_branch.outputs.db_url_pooled }}
 
       # Optional: enable this if preview branches should include demo data.
       # - name: Seed Neon preview branch
       #   run: pnpm db:seed
       #   env:
-      #     DATABASE_URL: ${{ steps.create_neon_branch.outputs.db_url_with_pooler }}
+      #     DATABASE_URL: ${{ steps.create_neon_branch.outputs.db_url_pooled }}
 
       # Optional: enable this to post schema diffs to PRs.
       # This requires job permissions:
