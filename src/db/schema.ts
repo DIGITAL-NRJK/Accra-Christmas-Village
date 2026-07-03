@@ -74,6 +74,12 @@ export const incidentStatusEnum = pgEnum("incident_status", [
   "resolved",
 ]);
 
+export const accessRequestStatusEnum = pgEnum("access_request_status", [
+  "pending",
+  "approved",
+  "rejected",
+]);
+
 export const zones = pgTable("zones", {
   id: text("id").primaryKey(),
   code: text("code").notNull().unique(),
@@ -299,4 +305,27 @@ export const auditLogs = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [index("audit_logs_entity_idx").on(table.entityType, table.entityId)],
+);
+
+export const accessRequests = pgTable(
+  "access_requests",
+  {
+    id: text("id").primaryKey(),
+    clerkUserId: text("clerk_user_id").notNull(),
+    email: text("email").notNull(),
+    requestedRole: roleEnum("requested_role").notNull(),
+    organizationName: text("organization_name").notNull(),
+    contactName: text("contact_name").notNull(),
+    phone: text("phone").notNull().default(""),
+    message: text("message").notNull().default(""),
+    status: accessRequestStatusEnum("status").notNull().default("pending"),
+    reviewerNote: text("reviewer_note"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("access_requests_clerk_user_id_unique").on(table.clerkUserId),
+    index("access_requests_status_idx").on(table.status),
+  ],
 );
