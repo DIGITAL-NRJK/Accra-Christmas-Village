@@ -20,7 +20,7 @@ export function SiteFooter() {
           <p className="font-semibold text-acv-ink">Operations</p>
           <div className="mt-2 grid gap-2">
             <Link href="/portal">Participant portal</Link>
-            <Link href="/admin">Admin dashboard</Link>
+            <Link href="/practical-info">Practical info</Link>
           </div>
         </div>
       </div>

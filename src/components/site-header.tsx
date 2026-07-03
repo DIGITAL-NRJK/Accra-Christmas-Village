@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Gift, LayoutDashboard } from "lucide-react";
+import { Gift } from "lucide-react";
 import { AuthControls } from "@/components/auth-controls";
 
 const publicLinks = [
@@ -27,13 +27,6 @@ export function SiteHeader() {
             </span>
           </Link>
           <div className="hidden items-center gap-3 sm:flex">
-            <Link
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-2 text-sm font-semibold text-white hover:bg-white/15"
-              href="/admin"
-            >
-              <LayoutDashboard aria-hidden="true" className="size-4 text-acv-gold" />
-              Admin
-            </Link>
             <AuthControls />
           </div>
         </div>

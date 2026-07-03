@@ -28,6 +28,7 @@ async function main() {
   requireDatabaseUrl();
   const db = getDb();
 
+  await db.delete(schema.accessRequests);
   await db.delete(schema.auditLogs);
   await db.delete(schema.incidents);
   await db.delete(schema.announcements);

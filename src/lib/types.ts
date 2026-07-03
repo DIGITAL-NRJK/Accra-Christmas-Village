@@ -8,6 +8,8 @@ export const roles = [
 ] as const;
 
 export type Role = (typeof roles)[number];
+export type ParticipantRole = Extract<Role, "vendor" | "sponsor" | "partner">;
+export type AccessRequestStatus = "pending" | "approved" | "rejected";
 
 export type DocumentStatus = "missing" | "submitted" | "approved" | "rejected";
 export type ComplianceStatus = "not_started" | "in_progress" | "compliant" | "blocked";
@@ -145,4 +147,18 @@ export type Incident = {
   status: "open" | "monitoring" | "resolved";
   occurredAt: string;
   description: string;
+};
+
+export type AccessRequest = {
+  id: string;
+  clerkUserId: string;
+  email: string;
+  requestedRole: ParticipantRole;
+  organizationName: string;
+  contactName: string;
+  phone: string;
+  message: string;
+  status: AccessRequestStatus;
+  reviewerNote: string | null;
+  createdAt: string;
 };

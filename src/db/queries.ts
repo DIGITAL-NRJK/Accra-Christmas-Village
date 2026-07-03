@@ -1,7 +1,13 @@
-import { eq, or } from "drizzle-orm";
+import { desc, eq, or } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { documents, users } from "@/db/schema";
-import type { DocumentStatus } from "@/lib/types";
+import { accessRequests, documents, organizations, users } from "@/db/schema";
+import type { DocumentStatus, ParticipantRole } from "@/lib/types";
+
+const participantRoles: ParticipantRole[] = ["vendor", "sponsor", "partner"];
+
+function isParticipantRole(role: string): role is ParticipantRole {
+  return participantRoles.includes(role as ParticipantRole);
+}
 
 export type SaveDocumentMetadataInput = {
   id: string;
@@ -106,4 +112,195 @@ export async function findUserByClerkIdentity(clerkUserId: string, email: string
   }
 
   return user ?? null;
+}
+
+export type CreateAccessRequestInput = {
+  clerkUserId: string;
+  email: string;
+  requestedRole: ParticipantRole;
+  organizationName: string;
+  contactName: string;
+  phone: string;
+  message: string;
+};
+
+export async function createOrUpdateAccessRequest(input: CreateAccessRequestInput) {
+  if (!process.env.DATABASE_URL) {
+    console.info("Skipped access request write because DATABASE_URL is not set.", {
+      email: input.email,
+      requestedRole: input.requestedRole,
+      organizationName: input.organizationName,
+    });
+    return;
+  }
+
+  const db = getDb();
+
+  await db
+    .insert(accessRequests)
+    .values({
+      id: crypto.randomUUID(),
+      ...input,
+      status: "pending",
+      reviewerNote: null,
+      reviewedAt: null,
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: accessRequests.clerkUserId,
+      set: {
+        email: input.email,
+        requestedRole: input.requestedRole,
+        organizationName: input.organizationName,
+        contactName: input.contactName,
+        phone: input.phone,
+        message: input.message,
+        status: "pending",
+        reviewerNote: null,
+        reviewedAt: null,
+        updatedAt: new Date(),
+      },
+    });
+}
+
+export async function getAccessRequestForClerkUser(clerkUserId: string) {
+  if (!process.env.DATABASE_URL) {
+    return null;
+  }
+
+  const db = getDb();
+  const [request] = await db
+    .select()
+    .from(accessRequests)
+    .where(eq(accessRequests.clerkUserId, clerkUserId))
+    .limit(1);
+
+  return request ?? null;
+}
+
+export async function listAccessRequests() {
+  if (!process.env.DATABASE_URL) {
+    return [];
+  }
+
+  const db = getDb();
+
+  return db.select().from(accessRequests).orderBy(desc(accessRequests.createdAt));
+}
+
+export async function approveAccessRequest(
+  requestId: string,
+  reviewerNote: string,
+  reviewerUserId: string | null,
+) {
+  if (!process.env.DATABASE_URL) {
+    console.info("Skipped access request approval because DATABASE_URL is not set.", {
+      requestId,
+      reviewerNote,
+      reviewerUserId,
+    });
+    return;
+  }
+
+  const db = getDb();
+  const [request] = await db.select().from(accessRequests).where(eq(accessRequests.id, requestId)).limit(1);
+
+  if (!request) {
+    return;
+  }
+
+  if (!isParticipantRole(request.requestedRole)) {
+    await db
+      .update(accessRequests)
+      .set({
+        status: "rejected",
+        reviewerNote: "Only vendor, sponsor and partner access requests can be approved here.",
+        reviewedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(accessRequests.id, requestId));
+    return;
+  }
+
+  const [existingUser] = await db
+    .select()
+    .from(users)
+    .where(or(eq(users.clerkUserId, request.clerkUserId), eq(users.email, request.email)))
+    .limit(1);
+  const organizationId = existingUser?.organizationId ?? crypto.randomUUID();
+
+  if (!existingUser?.organizationId) {
+    await db
+      .insert(organizations)
+      .values({
+        id: organizationId,
+        name: request.organizationName,
+        type: request.requestedRole,
+        contactEmail: request.email,
+        contactPhone: request.phone,
+        status: "active",
+      })
+      .onConflictDoNothing();
+  }
+
+  if (existingUser) {
+    await db
+      .update(users)
+      .set({
+        clerkUserId: request.clerkUserId,
+        organizationId,
+        role: request.requestedRole,
+        fullName: request.contactName,
+        email: request.email,
+        phone: request.phone,
+      })
+      .where(eq(users.id, existingUser.id));
+  } else {
+    await db.insert(users).values({
+      id: crypto.randomUUID(),
+      clerkUserId: request.clerkUserId,
+      organizationId,
+      role: request.requestedRole,
+      fullName: request.contactName,
+      email: request.email,
+      phone: request.phone,
+    });
+  }
+
+  await db
+    .update(accessRequests)
+    .set({
+      status: "approved",
+      reviewerNote,
+      reviewedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(accessRequests.id, requestId));
+}
+
+export async function rejectAccessRequest(
+  requestId: string,
+  reviewerNote: string,
+  reviewerUserId: string | null,
+) {
+  if (!process.env.DATABASE_URL) {
+    console.info("Skipped access request rejection because DATABASE_URL is not set.", {
+      requestId,
+      reviewerNote,
+      reviewerUserId,
+    });
+    return;
+  }
+
+  const db = getDb();
+
+  await db
+    .update(accessRequests)
+    .set({
+      status: "rejected",
+      reviewerNote,
+      reviewedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(accessRequests.id, requestId));
 }

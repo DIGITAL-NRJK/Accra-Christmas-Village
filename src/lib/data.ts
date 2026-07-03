@@ -253,6 +253,14 @@ export const organizations: Organization[] = [
     contactPhone: "+233 30 000 0300",
     status: "active",
   },
+  {
+    id: "org-city-tourism-board",
+    name: "City Tourism Board",
+    type: "partner",
+    contactEmail: "partners@citytourism.example",
+    contactPhone: "+233 30 000 0400",
+    status: "active",
+  },
 ];
 
 export const users: User[] = [
@@ -279,6 +287,14 @@ export const users: User[] = [
     fullName: "Efua Asare",
     email: "admin@accrachristmasvillage.example",
     phone: "+233 30 000 0300",
+  },
+  {
+    id: "user-demo-partner",
+    organizationId: "org-city-tourism-board",
+    role: "partner",
+    fullName: "Yaw Tetteh",
+    email: "partner@citytourism.example",
+    phone: "+233 30 000 0400",
   },
 ];
 
@@ -508,6 +524,22 @@ export const documentRequirements: DocumentRequirement[] = [
     description: "Equipment list and amperage needs for activation teams.",
     required: false,
     sortOrder: 3,
+  },
+  {
+    id: "req-partner-mou",
+    organizationType: "partner",
+    name: "Partnership MOU",
+    description: "Signed operating memorandum for partner responsibilities.",
+    required: true,
+    sortOrder: 1,
+  },
+  {
+    id: "req-partner-staff-list",
+    organizationType: "partner",
+    name: "Partner staff list",
+    description: "Names and phone numbers for all partner representatives on-site.",
+    required: true,
+    sortOrder: 2,
   },
 ];
 

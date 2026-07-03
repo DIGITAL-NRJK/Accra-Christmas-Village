@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { findUserByClerkIdentity } from "@/db/queries";
 import { getOrganization, organizations, users } from "@/lib/data";
-import type { Role, User } from "@/lib/types";
+import type { ParticipantRole, Role, User } from "@/lib/types";
 
 export type DemoSession = {
   role: Role;
@@ -39,6 +39,7 @@ type DatabaseUser = Awaited<ReturnType<typeof findUserByClerkIdentity>>;
 export type AppSession = {
   clerkUserId: string;
   email: string | null;
+  name: string;
   role: Role;
   user: DatabaseUser;
   organization: ReturnType<typeof getOrganization>;
@@ -57,6 +58,16 @@ function getBootstrapAdminEmails() {
     .filter(Boolean);
 }
 
+function getDisplayName(user: Awaited<ReturnType<typeof currentUser>>, email: string | null) {
+  const name = [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim();
+
+  return name || user?.username || email || "Participant";
+}
+
+export function isParticipantRole(role: Role): role is ParticipantRole {
+  return role === "vendor" || role === "sponsor" || role === "partner";
+}
+
 export const getCurrentAppSession = cache(async (): Promise<AppSession | null> => {
   const clerkUser = await currentUser();
 
@@ -65,6 +76,7 @@ export const getCurrentAppSession = cache(async (): Promise<AppSession | null> =
   }
 
   const email = getPrimaryEmail(clerkUser);
+  const name = getDisplayName(clerkUser, email);
   const databaseUser = await findUserByClerkIdentity(clerkUser.id, email);
   const bootstrapAdmin = email ? getBootstrapAdminEmails().includes(email.toLowerCase()) : false;
   const role = databaseUser?.role ?? (bootstrapAdmin ? "super_admin" : "visitor");
@@ -73,6 +85,7 @@ export const getCurrentAppSession = cache(async (): Promise<AppSession | null> =
   return {
     clerkUserId: clerkUser.id,
     email,
+    name,
     role,
     user: databaseUser,
     organization,

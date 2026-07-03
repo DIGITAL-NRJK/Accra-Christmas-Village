@@ -14,6 +14,7 @@ const statusCopy: Record<string, string> = {
   compliant: "Compliant",
   blocked: "Blocked",
   active: "Active",
+  pending: "Pending",
   confirmed: "Confirmed",
   prospect: "Prospect",
   assigned: "Assigned",
@@ -32,6 +33,7 @@ const statusClasses: Record<string, string> = {
   compliant: "border-emerald-300 bg-emerald-50 text-emerald-800",
   blocked: "border-rose-300 bg-rose-50 text-rose-800",
   active: "border-emerald-300 bg-emerald-50 text-emerald-800",
+  pending: "border-amber-300 bg-amber-50 text-amber-800",
   confirmed: "border-sky-300 bg-sky-50 text-sky-800",
   prospect: "border-amber-300 bg-amber-50 text-amber-800",
   assigned: "border-emerald-300 bg-emerald-50 text-emerald-800",
@@ -49,7 +51,7 @@ function StatusIcon({ status }: { status: string }) {
     return <XCircle aria-hidden="true" className="size-3.5" />;
   }
 
-  if (status === "submitted" || status === "in_progress" || status === "confirmed" || status === "reserved") {
+  if (status === "submitted" || status === "in_progress" || status === "confirmed" || status === "reserved" || status === "pending") {
     return <Clock3 aria-hidden="true" className="size-3.5" />;
   }
 
