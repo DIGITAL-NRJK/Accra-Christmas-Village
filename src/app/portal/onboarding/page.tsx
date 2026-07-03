@@ -3,15 +3,15 @@ import { PageHeader } from "@/components/page-header";
 import { PortalNav } from "@/components/portal-nav";
 import { ProgressBar } from "@/components/progress-bar";
 import { StatusPill } from "@/components/status-pill";
-import { getDemoSession } from "@/lib/auth";
+import { requireAnyRole } from "@/lib/auth";
 import { getOnboardingProgress, onboardingTasks } from "@/lib/data";
 
 export const metadata = {
   title: "Onboarding",
 };
 
-export default function OnboardingPage() {
-  const session = getDemoSession("vendor");
+export default async function OnboardingPage() {
+  const session = await requireAnyRole(["vendor", "sponsor", "partner"]);
   const organizationId = session.organization?.id ?? "";
   const tasks = onboardingTasks.filter((task) => task.organizationId === organizationId);
   const progress = getOnboardingProgress(organizationId);

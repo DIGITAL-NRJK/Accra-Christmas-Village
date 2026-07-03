@@ -1,14 +1,17 @@
 import { MessageSquareText } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { PortalNav } from "@/components/portal-nav";
+import { requireAnyRole } from "@/lib/auth";
 import { getPublishedAnnouncements } from "@/lib/data";
 
 export const metadata = {
   title: "Messages",
 };
 
-export default function MessagesPage() {
-  const messages = getPublishedAnnouncements("vendor");
+export default async function MessagesPage() {
+  const session = await requireAnyRole(["vendor", "sponsor", "partner"]);
+  const audience = session.role === "sponsor" ? "sponsor" : "vendor";
+  const messages = getPublishedAnnouncements(audience);
 
   return (
     <>

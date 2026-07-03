@@ -1,8 +1,8 @@
 import { Cable, MapPinned, Shield, Trash2, Truck, Zap } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { PortalNav } from "@/components/portal-nav";
-import { getDemoSession } from "@/lib/auth";
-import { getStand, getVendorByOrganization, getZone } from "@/lib/data";
+import { requireAnyRole } from "@/lib/auth";
+import { getSponsorByOrganization, getStand, getVendorByOrganization, getZone } from "@/lib/data";
 
 export const metadata = {
   title: "Stand",
@@ -41,10 +41,11 @@ const instructions = [
   },
 ];
 
-export default function StandPage() {
-  const session = getDemoSession("vendor");
+export default async function StandPage() {
+  const session = await requireAnyRole(["vendor", "sponsor", "partner"]);
   const vendor = session.organization ? getVendorByOrganization(session.organization.id) : undefined;
-  const stand = getStand(vendor?.standId ?? null);
+  const sponsor = session.organization ? getSponsorByOrganization(session.organization.id) : undefined;
+  const stand = getStand(vendor?.standId ?? sponsor?.standId ?? null);
   const zone = stand ? getZone(stand.zoneId) : undefined;
 
   return (

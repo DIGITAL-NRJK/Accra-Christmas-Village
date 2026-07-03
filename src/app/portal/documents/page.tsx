@@ -3,18 +3,21 @@ import { PageHeader } from "@/components/page-header";
 import { PortalNav } from "@/components/portal-nav";
 import { StatusPill } from "@/components/status-pill";
 import { uploadDocument } from "@/app/portal/documents/actions";
-import { getDemoSession } from "@/lib/auth";
+import { requireAnyRole } from "@/lib/auth";
 import { documentRequirements, getDocumentsForOrganization } from "@/lib/data";
 
 export const metadata = {
   title: "Documents",
 };
 
-export default function DocumentsPage() {
-  const session = getDemoSession("vendor");
+export default async function DocumentsPage() {
+  const session = await requireAnyRole(["vendor", "sponsor", "partner"]);
   const organization = session.organization;
   const documents = organization ? getDocumentsForOrganization(organization.id) : [];
-  const requirements = documentRequirements.filter((requirement) => requirement.organizationType === "vendor");
+  const requirementType = session.role === "sponsor" ? "sponsor" : "vendor";
+  const requirements = documentRequirements.filter(
+    (requirement) => requirement.organizationType === requirementType,
+  );
 
   return (
     <>
