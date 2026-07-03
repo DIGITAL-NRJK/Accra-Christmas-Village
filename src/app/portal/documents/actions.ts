@@ -2,13 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { saveDocumentMetadata } from "@/db/queries";
-import { getDemoSession } from "@/lib/auth";
+import { requireAnyRole } from "@/lib/auth";
 import { documentStorage } from "@/lib/storage";
 
 export async function uploadDocument(formData: FormData) {
   const requirementId = String(formData.get("requirementId") ?? "");
   const file = formData.get("file");
-  const session = getDemoSession("vendor");
+  const session = await requireAnyRole(["vendor", "sponsor", "partner"]);
 
   if (!session.user || !session.organization || !requirementId) {
     return;

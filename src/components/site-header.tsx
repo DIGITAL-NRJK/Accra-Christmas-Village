@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Gift, LayoutDashboard } from "lucide-react";
-import { RoleSwitcher } from "@/components/role-switcher";
+import { AuthControls } from "@/components/auth-controls";
 
 const publicLinks = [
   { href: "/map", label: "Map" },
@@ -34,7 +34,7 @@ export function SiteHeader() {
               <LayoutDashboard aria-hidden="true" className="size-4 text-acv-gold" />
               Admin
             </Link>
-            <RoleSwitcher />
+            <AuthControls />
           </div>
         </div>
         <div className="flex items-center gap-3 overflow-x-auto pb-1">
@@ -55,7 +55,7 @@ export function SiteHeader() {
           </Link>
         </div>
         <div className="sm:hidden">
-          <RoleSwitcher />
+          <AuthControls />
         </div>
       </div>
     </header>

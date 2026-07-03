@@ -51,7 +51,9 @@ pnpm dev
 
 ## Demo Access
 
-The app includes a demo role switcher in the header for visitor, vendor, sponsor and admin previews. Authentication is isolated in `src/lib/auth.ts` so it can be replaced with a real provider later.
+The public site is available without an account. The participant portal and admin workspace are protected by Clerk authentication and Accra Christmas Village roles stored in Neon.
+
+For local bootstrap access, set `CLERK_ADMIN_EMAILS` to a comma-separated list of trusted admin emails. For vendor and sponsor access, link the Clerk user to a row in the `users` table using `clerk_user_id`, or use an email that already exists in the seeded `users` table.
 
 ## Document Uploads
 

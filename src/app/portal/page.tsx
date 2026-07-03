@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { PortalNav } from "@/components/portal-nav";
 import { ProgressBar } from "@/components/progress-bar";
 import { StatusPill } from "@/components/status-pill";
-import { getDemoSession } from "@/lib/auth";
+import { requireAnyRole } from "@/lib/auth";
 import {
   documents,
   getDocumentsForOrganization,
@@ -19,11 +19,7 @@ import {
 } from "@/lib/data";
 import type { Role } from "@/lib/types";
 
-type PortalPageProps = {
-  searchParams: Promise<{ role?: string }>;
-};
-
-function getPortalRole(role?: string): Extract<Role, "vendor" | "sponsor"> {
+function getAnnouncementAudience(role: Role) {
   return role === "sponsor" ? "sponsor" : "vendor";
 }
 
@@ -31,10 +27,9 @@ export const metadata = {
   title: "Portal",
 };
 
-export default async function PortalPage({ searchParams }: PortalPageProps) {
-  const { role } = await searchParams;
-  const portalRole = getPortalRole(role);
-  const session = getDemoSession(portalRole);
+export default async function PortalPage() {
+  const session = await requireAnyRole(["vendor", "sponsor", "partner"]);
+  const portalRole = getAnnouncementAudience(session.role);
   const organization = session.organization;
   const vendor = organization ? getVendorByOrganization(organization.id) : undefined;
   const sponsor = organization ? getSponsorByOrganization(organization.id) : undefined;

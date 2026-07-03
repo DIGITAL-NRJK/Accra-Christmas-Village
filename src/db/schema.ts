@@ -118,6 +118,7 @@ export const users = pgTable(
   "users",
   {
     id: text("id").primaryKey(),
+    clerkUserId: text("clerk_user_id"),
     organizationId: text("organization_id").references(() => organizations.id),
     role: roleEnum("role").notNull().default("visitor"),
     fullName: text("full_name").notNull(),
@@ -125,7 +126,10 @@ export const users = pgTable(
     phone: text("phone").notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [index("users_organization_idx").on(table.organizationId)],
+  (table) => [
+    uniqueIndex("users_clerk_user_id_unique").on(table.clerkUserId),
+    index("users_organization_idx").on(table.organizationId),
+  ],
 );
 
 export const vendors = pgTable(

@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { documents } from "@/db/schema";
+import { documents, users } from "@/db/schema";
 import type { DocumentStatus } from "@/lib/types";
 
 export type SaveDocumentMetadataInput = {
@@ -77,4 +77,33 @@ export async function reviewDocument(
       reviewedByUserId: reviewerUserId,
     })
     .where(eq(documents.id, documentId));
+}
+
+export async function findUserByClerkIdentity(clerkUserId: string, email: string | null) {
+  if (!process.env.DATABASE_URL) {
+    return null;
+  }
+
+  const db = getDb();
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(
+      email
+        ? or(eq(users.clerkUserId, clerkUserId), eq(users.email, email))
+        : eq(users.clerkUserId, clerkUserId),
+    )
+    .limit(1);
+
+  if (user && !user.clerkUserId) {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ clerkUserId })
+      .where(eq(users.id, user.id))
+      .returning();
+
+    return updatedUser;
+  }
+
+  return user ?? null;
 }

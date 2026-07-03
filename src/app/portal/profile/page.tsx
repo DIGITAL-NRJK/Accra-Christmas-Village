@@ -1,14 +1,14 @@
 import { Building2, Mail, Phone } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { PortalNav } from "@/components/portal-nav";
-import { getDemoSession } from "@/lib/auth";
+import { requireAnyRole } from "@/lib/auth";
 
 export const metadata = {
   title: "Profile",
 };
 
-export default function ProfilePage() {
-  const session = getDemoSession("vendor");
+export default async function ProfilePage() {
+  const session = await requireAnyRole(["vendor", "sponsor", "partner"]);
   const organization = session.organization;
 
   return (
