@@ -1,5 +1,6 @@
-import { getDb } from "@/db/client";
-import * as schema from "@/db/schema";
+import { getDb } from "./client";
+import { loadLocalEnv } from "./load-env";
+import * as schema from "./schema";
 import {
   announcements,
   documentRequirements,
@@ -13,11 +14,13 @@ import {
   users,
   vendors,
   zones,
-} from "@/lib/data";
+} from "../lib/data";
+
+loadLocalEnv();
 
 function requireDatabaseUrl() {
   if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL is required. Add it to .env.local before running pnpm db:seed.");
+    throw new Error("DATABASE_URL is required. Add it to .env before running pnpm db:seed.");
   }
 }
 
