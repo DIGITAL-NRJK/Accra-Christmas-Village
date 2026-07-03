@@ -120,6 +120,21 @@ export async function findUserByClerkIdentity(clerkUserId: string, email: string
   return user ?? null;
 }
 
+export async function getOrganizationById(organizationId: string | null) {
+  if (!process.env.DATABASE_URL || !organizationId) {
+    return null;
+  }
+
+  const db = getDb();
+  const [organization] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, organizationId))
+    .limit(1);
+
+  return organization ?? null;
+}
+
 export type SyncClerkUserProfileInput = {
   clerkUserId: string;
   email: string | null;

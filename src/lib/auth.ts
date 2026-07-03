@@ -1,14 +1,14 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import { syncClerkUserProfile } from "@/db/queries";
+import { getOrganizationById, syncClerkUserProfile } from "@/db/queries";
 import { getOrganization, organizations, users } from "@/lib/data";
-import type { ParticipantRole, Role, User } from "@/lib/types";
+import type { Organization, ParticipantRole, Role, User } from "@/lib/types";
 
 export type DemoSession = {
   role: Role;
   user: User | null;
-  organization: ReturnType<typeof getOrganization>;
+  organization: Organization | undefined;
 };
 
 const demoUserByRole: Partial<Record<Role, string>> = {
@@ -42,7 +42,7 @@ export type AppSession = {
   name: string;
   role: Role;
   user: DatabaseUser;
-  organization: ReturnType<typeof getOrganization>;
+  organization: Organization | undefined;
 };
 
 function getPrimaryEmail(user: Awaited<ReturnType<typeof currentUser>>) {
@@ -68,6 +68,27 @@ export function isParticipantRole(role: Role): role is ParticipantRole {
   return role === "vendor" || role === "sponsor" || role === "partner";
 }
 
+async function getSessionOrganization(organizationId: string | null | undefined): Promise<Organization | undefined> {
+  if (!organizationId) {
+    return undefined;
+  }
+
+  const databaseOrganization = await getOrganizationById(organizationId);
+
+  if (databaseOrganization) {
+    return {
+      id: databaseOrganization.id,
+      name: databaseOrganization.name,
+      type: databaseOrganization.type,
+      contactEmail: databaseOrganization.contactEmail,
+      contactPhone: databaseOrganization.contactPhone,
+      status: databaseOrganization.status,
+    };
+  }
+
+  return getOrganization(organizationId);
+}
+
 export const getCurrentAppSession = cache(async (): Promise<AppSession | null> => {
   const clerkUser = await currentUser();
 
@@ -86,7 +107,7 @@ export const getCurrentAppSession = cache(async (): Promise<AppSession | null> =
   });
   const bootstrapAdmin = email ? adminEmails.includes(email.toLowerCase()) : false;
   const role = databaseUser?.role ?? (bootstrapAdmin ? "super_admin" : "visitor");
-  const organization = getOrganization(databaseUser?.organizationId ?? null);
+  const organization = await getSessionOrganization(databaseUser?.organizationId);
 
   return {
     clerkUserId: clerkUser.id,

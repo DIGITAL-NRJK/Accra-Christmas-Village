@@ -112,6 +112,10 @@ async function ParticipantAccessRequest() {
 
   const existingRequest = await getAccessRequestForClerkUser(session.clerkUserId);
   const canSubmitRequest = !existingRequest || existingRequest.status === "rejected" || existingRequest.status === "cancelled";
+  const requestPanelTitle = existingRequest?.status === "approved" ? "Access approved" : "Request under review";
+  const requestPanelCopy = existingRequest?.status === "approved"
+    ? "Your role has been approved. The portal will open automatically once your workspace record is available."
+    : "The organizer team is validating this request. You can cancel it if the organization, role or details are wrong.";
 
   return (
     <>
@@ -219,10 +223,8 @@ async function ParticipantAccessRequest() {
           </form>
         ) : (
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-xl font-semibold text-acv-ink">Request under review</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              The organizer team is validating this request. You can cancel it if the organization, role or details are wrong.
-            </p>
+            <h2 className="text-xl font-semibold text-acv-ink">{requestPanelTitle}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{requestPanelCopy}</p>
             {existingRequest?.status === "pending" ? (
               <form action={cancelParticipantAccessRequest} className="mt-5 grid gap-3 rounded-lg bg-slate-50 p-4">
                 <label className="grid gap-2">
