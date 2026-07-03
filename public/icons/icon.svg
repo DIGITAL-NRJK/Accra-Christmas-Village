@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Accra Christmas Village icon">
+  <rect width="512" height="512" rx="96" fill="#17211d"/>
+  <path d="M256 70 88 182v190h336V182L256 70Z" fill="#0f7b4b"/>
+  <path d="M128 214h256v128H128z" fill="#f8faf6"/>
+  <path d="M156 244h64v98h-64zm136 0h64v98h-64z" fill="#bb4d2a"/>
+  <path d="M256 100 112 196h288L256 100Z" fill="#f2bf4a"/>
+  <circle cx="256" cy="250" r="34" fill="#0f7b4b"/>
+  <path d="m256 205 11 28 30 2-23 19 7 30-25-16-25 16 7-30-23-19 30-2 11-28Z" fill="#f2bf4a"/>
+  <path d="M94 376h324" stroke="#f2bf4a" stroke-width="24" stroke-linecap="round"/>
+</svg>
