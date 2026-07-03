@@ -9,7 +9,7 @@ export const roles = [
 
 export type Role = (typeof roles)[number];
 export type ParticipantRole = Extract<Role, "vendor" | "sponsor" | "partner">;
-export type AccessRequestStatus = "pending" | "approved" | "rejected";
+export type AccessRequestStatus = "pending" | "approved" | "rejected" | "cancelled";
 
 export type DocumentStatus = "missing" | "submitted" | "approved" | "rejected";
 export type ComplianceStatus = "not_started" | "in_progress" | "compliant" | "blocked";
@@ -160,5 +160,7 @@ export type AccessRequest = {
   message: string;
   status: AccessRequestStatus;
   reviewerNote: string | null;
+  cancellationReason: string | null;
+  cancelledAt: string | null;
   createdAt: string;
 };

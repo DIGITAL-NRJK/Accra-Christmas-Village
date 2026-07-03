@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createOrUpdateAccessRequest } from "@/db/queries";
+import { cancelAccessRequestForClerkUser, createOrUpdateAccessRequest } from "@/db/queries";
 import { getCurrentAppSession } from "@/lib/auth";
 import type { ParticipantRole } from "@/lib/types";
 
@@ -34,6 +34,24 @@ export async function requestParticipantAccess(formData: FormData) {
     phone,
     message,
   });
+
+  revalidatePath("/portal");
+}
+
+export async function cancelParticipantAccessRequest(formData: FormData) {
+  const session = await getCurrentAppSession();
+
+  if (!session) {
+    redirect("/sign-in");
+  }
+
+  const cancellationReason = String(formData.get("cancellationReason") ?? "").trim();
+
+  if (!cancellationReason) {
+    return;
+  }
+
+  await cancelAccessRequestForClerkUser(session.clerkUserId, cancellationReason);
 
   revalidatePath("/portal");
 }

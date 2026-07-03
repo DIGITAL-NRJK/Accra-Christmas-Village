@@ -9,6 +9,7 @@ const statusCopy: Record<string, string> = {
   submitted: "Submitted",
   approved: "Approved",
   rejected: "Rejected",
+  cancelled: "Cancelled",
   not_started: "Not started",
   in_progress: "In progress",
   compliant: "Compliant",
@@ -28,6 +29,7 @@ const statusClasses: Record<string, string> = {
   submitted: "border-amber-300 bg-amber-50 text-amber-800",
   approved: "border-emerald-300 bg-emerald-50 text-emerald-800",
   rejected: "border-rose-300 bg-rose-50 text-rose-800",
+  cancelled: "border-slate-300 bg-slate-50 text-slate-700",
   not_started: "border-slate-300 bg-slate-50 text-slate-700",
   in_progress: "border-sky-300 bg-sky-50 text-sky-800",
   compliant: "border-emerald-300 bg-emerald-50 text-emerald-800",
@@ -47,7 +49,7 @@ function StatusIcon({ status }: { status: string }) {
     return <CheckCircle2 aria-hidden="true" className="size-3.5" />;
   }
 
-  if (status === "rejected" || status === "blocked" || status === "maintenance") {
+  if (status === "rejected" || status === "blocked" || status === "maintenance" || status === "cancelled") {
     return <XCircle aria-hidden="true" className="size-3.5" />;
   }
 
