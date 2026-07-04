@@ -1,13 +1,11 @@
 "use client";
 
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
-import { LogIn, UserPlus } from "lucide-react";
+import { LayoutDashboard, LogIn, UserPlus } from "lucide-react";
 
 type AuthControlsProps = {
   compact?: boolean;
 };
-
-const signedInMenuItems = [{ label: "Dashboard", href: "/portal" }];
 
 export function AuthControls({ compact = false }: AuthControlsProps = {}) {
   const signInLabel = compact ? "Sign in" : "Participant sign in";
@@ -36,7 +34,15 @@ export function AuthControls({ compact = false }: AuthControlsProps = {}) {
         </SignUpButton>
       </Show>
       <Show when="signed-in">
-        <UserButton customMenuItems={signedInMenuItems} />
+        <UserButton>
+          <UserButton.MenuItems>
+            <UserButton.Link
+              href="/portal"
+              label="Dashboard"
+              labelIcon={<LayoutDashboard aria-hidden="true" className="size-4" />}
+            />
+          </UserButton.MenuItems>
+        </UserButton>
       </Show>
     </div>
   );
