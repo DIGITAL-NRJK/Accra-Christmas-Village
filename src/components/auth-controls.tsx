@@ -7,6 +7,8 @@ type AuthControlsProps = {
   compact?: boolean;
 };
 
+const signedInMenuItems = [{ label: "Dashboard", href: "/portal" }];
+
 export function AuthControls({ compact = false }: AuthControlsProps = {}) {
   const signInLabel = compact ? "Sign in" : "Participant sign in";
   const signUpLabel = compact ? "Apply" : "Vendor/Sponsor/Partner";
@@ -34,7 +36,7 @@ export function AuthControls({ compact = false }: AuthControlsProps = {}) {
         </SignUpButton>
       </Show>
       <Show when="signed-in">
-        <UserButton />
+        <UserButton customMenuItems={signedInMenuItems} />
       </Show>
     </div>
   );
