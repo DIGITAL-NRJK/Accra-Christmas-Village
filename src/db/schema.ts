@@ -201,6 +201,27 @@ export const events = pgTable(
   (table) => [index("events_day_category_idx").on(table.day, table.category)],
 );
 
+export const heroSlides = pgTable(
+  "hero_slides",
+  {
+    id: text("id").primaryKey(),
+    title: text("title").notNull(),
+    subtitle: text("subtitle").notNull(),
+    eyebrow: text("eyebrow").notNull().default("20-26 Dec / Accra"),
+    imageUrl: text("image_url").notNull(),
+    imageAlt: text("image_alt").notNull().default("Accra Christmas Village festival scene"),
+    ctaLabel: text("cta_label").notNull().default("Open map"),
+    ctaHref: text("cta_href").notNull().default("/map"),
+    secondaryLabel: text("secondary_label").notNull().default("See programme"),
+    secondaryHref: text("secondary_href").notNull().default("/programme"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    published: boolean("published").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("hero_slides_publication_idx").on(table.published, table.sortOrder)],
+);
+
 export const documentRequirements = pgTable("document_requirements", {
   id: text("id").primaryKey(),
   organizationType: organizationTypeEnum("organization_type").notNull(),
