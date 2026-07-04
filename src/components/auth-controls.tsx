@@ -3,20 +3,33 @@
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { LogIn, UserPlus } from "lucide-react";
 
-export function AuthControls() {
+type AuthControlsProps = {
+  compact?: boolean;
+};
+
+export function AuthControls({ compact = false }: AuthControlsProps = {}) {
+  const signInLabel = compact ? "Sign in" : "Participant sign in";
+  const signUpLabel = compact ? "Apply" : "Vendor/Sponsor/Partner";
+  const signInClass = compact
+    ? "inline-flex items-center gap-2 rounded-full border border-white/[0.18] bg-white/[0.08] px-3 py-2 text-sm font-bold text-white transition hover:bg-white/[0.16]"
+    : "inline-flex items-center gap-2 rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/20";
+  const signUpClass = compact
+    ? "hidden items-center gap-2 rounded-full bg-acv-gold px-3 py-2 text-sm font-black text-acv-night transition hover:bg-white sm:inline-flex"
+    : "hidden items-center gap-2 rounded-md bg-acv-gold px-3 py-2 text-sm font-bold text-acv-night transition hover:bg-white sm:inline-flex";
+
   return (
     <div className="flex items-center gap-2">
       <Show when="signed-out">
         <SignInButton mode="modal">
-          <button className="inline-flex items-center gap-2 rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/20">
+          <button className={signInClass}>
             <LogIn aria-hidden="true" className="size-4 text-acv-gold" />
-            Participant sign in
+            {signInLabel}
           </button>
         </SignInButton>
         <SignUpButton mode="modal">
-          <button className="hidden items-center gap-2 rounded-md bg-acv-gold px-3 py-2 text-sm font-bold text-acv-night transition hover:bg-white sm:inline-flex">
+          <button className={signUpClass}>
             <UserPlus aria-hidden="true" className="size-4" />
-            Vendor/Sponsor/Partner
+            {signUpLabel}
           </button>
         </SignUpButton>
       </Show>

@@ -10,19 +10,9 @@ import {
   MapPin,
   Navigation,
   Search,
-  Sparkles,
-  Ticket,
 } from "lucide-react";
 import { defaultHeroSlides } from "@/lib/hero-slides";
 import type { HeroSlide } from "@/lib/types";
-
-const heroNav = [
-  { href: "/", label: "Home" },
-  { href: "/programme", label: "Events" },
-  { href: "/stands", label: "Categories" },
-  { href: "/map", label: "Location" },
-  { href: "/practical-info", label: "About" },
-];
 
 function slideBackground(imageUrl: string) {
   return {
@@ -67,9 +57,9 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   }
 
   return (
-    <section className="bg-acv-paper px-3 py-5 sm:px-5 lg:px-8 lg:py-7">
-      <div className="mx-auto w-full max-w-7xl">
-        <div className="relative isolate min-h-[620px] overflow-hidden rounded-[28px] bg-acv-night text-white shadow-[0_34px_90px_rgb(17_23_19/0.22)] sm:min-h-[690px] lg:min-h-[720px]">
+    <section className="bg-acv-paper pb-5">
+      <div className="w-full">
+        <div className="relative isolate min-h-[620px] overflow-hidden bg-acv-night text-white shadow-[0_34px_90px_rgb(17_23_19/0.18)] sm:min-h-[690px] lg:min-h-[calc(100svh-84px)]">
           {displaySlides.map((slide, index) => (
             <div
               aria-hidden="true"
@@ -83,48 +73,11 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_38%,transparent_0%,rgb(7_26_21/0.06)_42%,rgb(7_26_21/0.58)_100%)]" />
           <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-acv-night/30 to-transparent" />
 
-          <div className="relative z-20 flex items-center justify-between gap-3 px-4 py-4 sm:px-7 sm:py-6 lg:px-10">
-            <Link
-              aria-label="Accra Christmas Village home"
-              className="flex size-12 shrink-0 items-center justify-center rounded-full bg-white text-acv-palm shadow-[0_10px_30px_rgb(0_0_0/0.18)] transition hover:scale-105"
-              href="/"
-            >
-              <Sparkles aria-hidden="true" className="size-6" />
-            </Link>
-
-            <nav
-              aria-label="Hero navigation"
-              className="hidden max-w-full items-center gap-1 rounded-full border border-white/25 bg-white/20 p-1 text-white shadow-[0_16px_45px_rgb(0_0_0/0.18)] backdrop-blur-xl md:flex"
-            >
-              {heroNav.map((item) => (
-                <Link
-                  className={`rounded-full px-4 py-2 text-sm font-bold transition ${
-                    item.href === "/"
-                      ? "bg-white text-acv-clay shadow-sm"
-                      : "text-white/86 hover:bg-white/16 hover:text-white"
-                  }`}
-                  href={item.href}
-                  key={item.href}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-
-            <Link
-              className="inline-flex shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-black text-acv-clay shadow-[0_10px_30px_rgb(0_0_0/0.16)] transition hover:bg-acv-gold hover:text-acv-night"
-              href="/portal"
-            >
-              <Ticket aria-hidden="true" className="size-4" />
-              Portal
-            </Link>
-          </div>
-
-          <div className="relative z-10 flex min-h-[430px] flex-col items-center justify-end px-5 pb-28 text-center sm:min-h-[500px] sm:px-8 sm:pb-32 lg:min-h-[520px]">
+          <div className="relative z-10 flex min-h-[520px] flex-col items-center justify-center px-5 pb-28 pt-16 text-center sm:min-h-[600px] sm:px-8 sm:pb-32 lg:min-h-[calc(100svh-84px)] lg:pt-20">
             <p className="rounded-full border border-white/25 bg-white/14 px-4 py-2 font-mono text-xs font-bold uppercase text-white shadow-[0_10px_30px_rgb(0_0_0/0.14)] backdrop-blur">
               {activeSlide.eyebrow}
             </p>
-            <h1 className="mt-5 max-w-5xl text-balance text-[clamp(3.1rem,8vw,6.8rem)] font-black leading-[0.94] text-white">
+            <h1 className="mt-5 max-w-6xl text-balance text-[clamp(3.4rem,9vw,8rem)] font-black leading-[0.94] text-white">
               {activeSlide.title}
             </h1>
             <p className="mt-5 max-w-3xl text-balance text-base leading-7 text-white/88 sm:text-xl">
