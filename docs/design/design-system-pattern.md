@@ -39,16 +39,19 @@ Typography:
 
 Hero:
 
-- Full visual field using `public/design/hero-night-market.png`; the woven signal artwork remains a supporting texture for route and map surfaces.
-- H1 is the event name, not a marketing slogan.
-- Copy is short and practical.
+- Direction: Festival Gateway Carousel.
+- Full photo field with rounded event-frame composition, using admin-managed hero slides and `public/design/hero-night-market.png` as the default fallback.
+- H1 is the event name or slide title, centered over the human crowd moment rather than treated like a generic landing-page slogan.
+- Primary visitor decisions sit in the overlapping white action bar: date, location, category and map CTA.
 - The next section should remain visually implied below the fold.
 
 Navigation:
 
-- Sticky, compact and visible.
+- Direction: Arrival Gate.
+- Sticky, compact and visible, shaped like a visitor pass rather than a generic app bar.
 - Brand lockup includes icon, event name and date/location tag.
-- Public visitor routes stay available on desktop and mobile.
+- Public visitor routes stay available on desktop and mobile, with zone-code cues on wide screens.
+- A route-band strip anchors the header to the map and festival wayfinding system.
 
 Cards:
 

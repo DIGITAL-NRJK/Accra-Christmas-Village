@@ -99,6 +99,21 @@ export type ProgrammeItem = {
   published: boolean;
 };
 
+export type HeroSlide = {
+  id: string;
+  title: string;
+  subtitle: string;
+  eyebrow: string;
+  imageUrl: string;
+  imageAlt: string;
+  ctaLabel: string;
+  ctaHref: string;
+  secondaryLabel: string;
+  secondaryHref: string;
+  sortOrder: number;
+  published: boolean;
+};
+
 export type DocumentRequirement = {
   id: string;
   organizationType: "vendor" | "sponsor" | "partner";

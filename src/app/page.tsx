@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import {
   CalendarDays,
   ChevronRight,
@@ -11,6 +10,7 @@ import {
   Store,
 } from "lucide-react";
 import { AnnouncementBanner } from "@/components/announcement-banner";
+import { HeroCarousel } from "@/components/hero-carousel";
 import { MetricCard } from "@/components/metric-card";
 import { listAdminData } from "@/db/queries";
 
@@ -75,8 +75,9 @@ const routeHighlights = [
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const { events, sponsors, stands, vendors } = await listAdminData();
+  const { events, heroSlides, sponsors, stands, vendors } = await listAdminData();
   const publishedEvents = events.filter((event) => event.published);
+  const publishedHeroSlides = heroSlides.filter((slide) => slide.published);
   const featuredVendors = vendors.slice(0, 3);
   const eventJsonLd = {
     "@context": "https://schema.org",
@@ -110,73 +111,7 @@ export default async function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(eventJsonLd) }}
       />
       <AnnouncementBanner />
-      <section className="relative isolate overflow-hidden bg-acv-night text-white">
-        <Image
-          priority
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 -z-20 size-full object-cover"
-          height={1000}
-          sizes="100vw"
-          src="/design/hero-night-market.png"
-          width={1600}
-        />
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(7,26,21,0.96)_0%,rgba(7,26,21,0.82)_44%,rgba(7,26,21,0.18)_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 -z-10 h-32 bg-gradient-to-t from-acv-night to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-2 acv-route-band" />
-        <div className="mx-auto flex min-h-[72svh] w-full max-w-6xl flex-col justify-end px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
-          <div
-            className="min-w-0 max-w-3xl"
-            style={{ width: "min(100%, calc(100vw - 2rem))" }}
-          >
-            <p className="font-mono text-xs font-bold uppercase text-acv-gold">
-              20-26 December 2026 / Accra
-            </p>
-            <h1 className="mt-5 font-display text-6xl uppercase leading-none text-white sm:text-8xl lg:text-9xl">
-              <span>Accra</span>
-              <br className="sm:hidden" />
-              <span className="hidden sm:inline"> </span>
-              <span>Christmas</span>
-              <br />
-              <span>Village</span>
-            </h1>
-            <p className="mt-6 w-full min-w-0 max-w-2xl text-base leading-8 text-white/80 sm:text-lg">
-              Your pocket guide for the village: gates, arrival routes, programme moments, market
-              stands and safety notes for every visit.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link
-                className="inline-flex items-center gap-2 rounded-md bg-acv-gold px-5 py-3 text-sm font-bold text-acv-night transition hover:bg-white"
-                href="/map"
-              >
-                Open map
-                <ChevronRight aria-hidden="true" className="size-4" />
-              </Link>
-              <Link
-                className="inline-flex items-center gap-2 rounded-md border border-white/25 bg-white/10 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/20"
-                href="/programme"
-              >
-                Programme
-                <CalendarDays aria-hidden="true" className="size-4" />
-              </Link>
-            </div>
-            <div className="mt-10 grid w-full max-w-2xl grid-cols-1 border border-white/20 bg-white/20 sm:grid-cols-3">
-              <div className="bg-acv-night/80 p-4">
-                <p className="font-mono text-[11px] font-bold uppercase text-acv-gold">Open</p>
-                <p className="mt-2 text-lg font-semibold">14:00-22:00</p>
-              </div>
-              <div className="bg-acv-night/70 p-4">
-                <p className="font-mono text-[11px] font-bold uppercase text-acv-gold">Route</p>
-                <p className="mt-2 text-lg font-semibold">Gate B active</p>
-              </div>
-              <div className="bg-acv-night/60 p-4">
-                <p className="font-mono text-[11px] font-bold uppercase text-acv-gold">Signal</p>
-                <p className="mt-2 text-lg font-semibold">Main Stage</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <HeroCarousel slides={publishedHeroSlides} />
 
       <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-8 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
         <MetricCard

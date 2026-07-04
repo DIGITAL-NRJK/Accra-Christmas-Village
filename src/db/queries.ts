@@ -6,6 +6,7 @@ import {
   documentRequirements,
   documents,
   events,
+  heroSlides,
   organizations,
   sponsors,
   stands,
@@ -13,7 +14,8 @@ import {
   vendors,
   zones,
 } from "@/db/schema";
-import type { DocumentStatus, ParticipantRole, Role } from "@/lib/types";
+import { defaultHeroSlides } from "@/lib/hero-slides";
+import type { DocumentStatus, HeroSlide, ParticipantRole, Role } from "@/lib/types";
 
 const participantRoles: ParticipantRole[] = ["vendor", "sponsor", "partner"];
 const organizerOrganizationId = "org-festival-ops";
@@ -38,6 +40,21 @@ function slugify(value: string) {
 function toDateInput(value: FormDataEntryValue | null) {
   return String(value ?? "").trim();
 }
+
+const heroSlideColumns = {
+  id: heroSlides.id,
+  title: heroSlides.title,
+  subtitle: heroSlides.subtitle,
+  eyebrow: heroSlides.eyebrow,
+  imageUrl: heroSlides.imageUrl,
+  imageAlt: heroSlides.imageAlt,
+  ctaLabel: heroSlides.ctaLabel,
+  ctaHref: heroSlides.ctaHref,
+  secondaryLabel: heroSlides.secondaryLabel,
+  secondaryHref: heroSlides.secondaryHref,
+  sortOrder: heroSlides.sortOrder,
+  published: heroSlides.published,
+};
 
 export type SaveDocumentMetadataInput = {
   id: string;
@@ -536,6 +553,7 @@ export async function listAdminData() {
       documents: [],
       documentRequirements: [],
       events: [],
+      heroSlides: defaultHeroSlides,
       organizations: [],
       sponsors: [],
       stands: [],
@@ -553,6 +571,7 @@ export async function listAdminData() {
     documentRows,
     documentRequirementRows,
     eventRows,
+    heroSlideRows,
     organizationRows,
     sponsorRows,
     standRows,
@@ -565,6 +584,7 @@ export async function listAdminData() {
     db.select().from(documents).orderBy(desc(documents.createdAt)),
     db.select().from(documentRequirements).orderBy(asc(documentRequirements.sortOrder)),
     db.select().from(events).orderBy(asc(events.day), asc(events.startsAt)),
+    db.select(heroSlideColumns).from(heroSlides).orderBy(asc(heroSlides.sortOrder), desc(heroSlides.createdAt)),
     db.select().from(organizations).orderBy(asc(organizations.name)),
     db.select().from(sponsors).orderBy(asc(sponsors.brandName)),
     db.select().from(stands).orderBy(asc(stands.code)),
@@ -579,6 +599,7 @@ export async function listAdminData() {
     documents: documentRows,
     documentRequirements: documentRequirementRows,
     events: eventRows,
+    heroSlides: heroSlideRows,
     organizations: organizationRows,
     sponsors: sponsorRows,
     stands: standRows,
@@ -740,6 +761,105 @@ export type CreateProgrammeItemInput = {
   description: string;
   published: boolean;
 };
+
+export type SaveHeroSlideInput = Omit<HeroSlide, "id"> & {
+  id?: string;
+};
+
+export async function listHeroSlides() {
+  if (!process.env.DATABASE_URL) {
+    return defaultHeroSlides;
+  }
+
+  const db = getDb();
+  const rows = await db
+    .select(heroSlideColumns)
+    .from(heroSlides)
+    .orderBy(asc(heroSlides.sortOrder), desc(heroSlides.createdAt));
+
+  return rows.length > 0 ? rows : defaultHeroSlides;
+}
+
+export async function createHeroSlide(input: SaveHeroSlideInput) {
+  if (!process.env.DATABASE_URL) {
+    console.info("Skipped hero slide creation because DATABASE_URL is not set.", input);
+    return;
+  }
+
+  const db = getDb();
+
+  await db.insert(heroSlides).values({
+    id: input.id ?? crypto.randomUUID(),
+    title: input.title,
+    subtitle: input.subtitle,
+    eyebrow: input.eyebrow,
+    imageUrl: input.imageUrl,
+    imageAlt: input.imageAlt,
+    ctaLabel: input.ctaLabel,
+    ctaHref: input.ctaHref,
+    secondaryLabel: input.secondaryLabel,
+    secondaryHref: input.secondaryHref,
+    sortOrder: input.sortOrder,
+    published: input.published,
+    updatedAt: new Date(),
+  });
+}
+
+export async function updateHeroSlide(slideId: string, input: SaveHeroSlideInput) {
+  if (!process.env.DATABASE_URL || !slideId) {
+    return;
+  }
+
+  const db = getDb();
+  const values = {
+    title: input.title,
+    subtitle: input.subtitle,
+    eyebrow: input.eyebrow,
+    imageUrl: input.imageUrl,
+    imageAlt: input.imageAlt,
+    ctaLabel: input.ctaLabel,
+    ctaHref: input.ctaHref,
+    secondaryLabel: input.secondaryLabel,
+    secondaryHref: input.secondaryHref,
+    sortOrder: input.sortOrder,
+    published: input.published,
+    updatedAt: new Date(),
+  };
+
+  await db
+    .insert(heroSlides)
+    .values({
+      id: slideId,
+      ...values,
+    })
+    .onConflictDoUpdate({
+      target: heroSlides.id,
+      set: values,
+    });
+}
+
+export async function updateHeroSlidePublication(slideId: string, published: boolean) {
+  if (!process.env.DATABASE_URL || !slideId) {
+    return;
+  }
+
+  const db = getDb();
+
+  await db
+    .update(heroSlides)
+    .set({ published, updatedAt: new Date() })
+    .where(eq(heroSlides.id, slideId));
+}
+
+export async function deleteHeroSlide(slideId: string) {
+  if (!process.env.DATABASE_URL || !slideId) {
+    return;
+  }
+
+  const db = getDb();
+
+  await db.delete(heroSlides).where(eq(heroSlides.id, slideId));
+}
 
 export async function createProgrammeItem(input: CreateProgrammeItemInput) {
   if (!process.env.DATABASE_URL) {
