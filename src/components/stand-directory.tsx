@@ -29,11 +29,13 @@ export function StandDirectory({ items }: StandDirectoryProps) {
 
   return (
     <div className="space-y-5">
-      <label className="flex max-w-xl items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-3 shadow-sm">
-        <Tags aria-hidden="true" className="size-4 text-acv-clay" />
-        <span className="text-sm font-semibold text-slate-700">Category</span>
+      <label className="flex max-w-xl items-center gap-3 rounded-md border border-acv-line bg-acv-porcelain px-3 py-3 shadow-[0_12px_32px_rgb(17_23_19/0.06)]">
+        <span className="rounded-md bg-acv-night p-2 text-acv-gold">
+          <Tags aria-hidden="true" className="size-4" />
+        </span>
+        <span className="font-mono text-xs font-bold uppercase text-acv-clay">Category</span>
         <select
-          className="ml-auto bg-transparent text-sm font-medium text-acv-ink outline-none"
+          className="ml-auto min-w-0 bg-transparent text-sm font-semibold text-acv-ink outline-none"
           value={category}
           onChange={(event) => setCategory(event.target.value)}
         >
@@ -48,15 +50,19 @@ export function StandDirectory({ items }: StandDirectoryProps) {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {filteredItems.map((item) => (
-          <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm" key={item.id}>
+          <article
+            className="relative overflow-hidden rounded-md border border-acv-line bg-white p-4 shadow-[0_16px_40px_rgb(17_23_19/0.06)]"
+            key={item.id}
+          >
+            <div className="absolute inset-x-0 top-0 h-1 acv-route-band" />
             <div className="flex items-start justify-between gap-3">
-              <span className="rounded-md bg-acv-ink px-2.5 py-1 text-xs font-bold text-white">
+              <span className="rounded-md bg-acv-night px-2.5 py-1 font-mono text-xs font-bold text-acv-gold">
                 {item.code}
               </span>
               <StatusPill status={item.status} />
             </div>
             <div className="mt-4 flex items-start gap-3">
-              <span className="rounded-lg bg-acv-palm/10 p-2 text-acv-palm">
+              <span className="rounded-md bg-acv-palm p-2 text-white">
                 <Store aria-hidden="true" className="size-5" />
               </span>
               <div>
@@ -66,15 +72,15 @@ export function StandDirectory({ items }: StandDirectoryProps) {
             </div>
             <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
               <div>
-                <dt className="font-medium text-slate-500">Zone</dt>
+                <dt className="font-mono text-xs font-bold uppercase text-slate-500">Zone</dt>
                 <dd className="mt-1 text-acv-ink">{item.zoneName}</dd>
               </div>
               <div>
-                <dt className="font-medium text-slate-500">Power</dt>
+                <dt className="font-mono text-xs font-bold uppercase text-slate-500">Power</dt>
                 <dd className="mt-1 text-acv-ink">{item.powerAmps}A</dd>
               </div>
               <div className="col-span-2">
-                <dt className="font-medium text-slate-500">Category</dt>
+                <dt className="font-mono text-xs font-bold uppercase text-slate-500">Category</dt>
                 <dd className="mt-1 text-acv-ink">{item.category}</dd>
               </div>
             </dl>

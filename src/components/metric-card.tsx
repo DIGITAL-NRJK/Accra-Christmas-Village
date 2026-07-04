@@ -9,17 +9,18 @@ type MetricCardProps = {
 
 export function MetricCard({ label, value, detail, icon: Icon }: MetricCardProps) {
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <article className="relative overflow-hidden rounded-md border border-acv-line bg-acv-porcelain p-4 shadow-[0_16px_40px_rgb(17_23_19/0.07)]">
+      <div className="absolute inset-x-0 top-0 h-1 acv-route-band" />
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-slate-500">{label}</p>
-          <p className="mt-2 text-3xl font-semibold text-acv-ink">{value}</p>
+          <p className="font-mono text-xs font-bold uppercase text-acv-clay">{label}</p>
+          <p className="mt-3 font-display text-5xl uppercase leading-none text-acv-ink">{value}</p>
         </div>
-        <span className="rounded-lg bg-acv-gold/20 p-2 text-acv-clay">
+        <span className="rounded-md bg-acv-night p-2 text-acv-gold">
           <Icon aria-hidden="true" className="size-5" />
         </span>
       </div>
-      <p className="mt-3 text-sm text-slate-600">{detail}</p>
+      <p className="mt-4 text-sm leading-6 text-slate-700">{detail}</p>
     </article>
   );
 }

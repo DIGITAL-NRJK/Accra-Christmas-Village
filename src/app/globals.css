@@ -1,33 +1,53 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8faf6;
-  --foreground: #17211d;
-  --acv-ink: #17211d;
-  --acv-palm: #0f7b4b;
-  --acv-gold: #f2bf4a;
-  --acv-clay: #bb4d2a;
-  --acv-sky: #d8eef2;
-  --acv-paper: #f8faf6;
+  --background: #f5efe2;
+  --foreground: #111713;
+  --acv-night: #071a15;
+  --acv-ink: #111713;
+  --acv-palm: #0b5d3f;
+  --acv-gold: #d7a83e;
+  --acv-clay: #c6532d;
+  --acv-hibiscus: #b82b5e;
+  --acv-sky: #a8dadc;
+  --acv-paper: #f5efe2;
+  --acv-porcelain: #fffaf0;
+  --acv-line: #d8c7a1;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-acv-night: var(--acv-night);
   --color-acv-ink: var(--acv-ink);
   --color-acv-palm: var(--acv-palm);
   --color-acv-gold: var(--acv-gold);
   --color-acv-clay: var(--acv-clay);
+  --color-acv-hibiscus: var(--acv-hibiscus);
   --color-acv-sky: var(--acv-sky);
   --color-acv-paper: var(--acv-paper);
-  --font-sans: var(--font-geist-sans);
+  --color-acv-porcelain: var(--acv-porcelain);
+  --color-acv-line: var(--acv-line);
+  --font-sans: var(--font-instrument-sans);
+  --font-display: var(--font-big-shoulders);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background: var(--background);
+  background:
+    linear-gradient(90deg, rgb(17 23 19 / 0.035) 1px, transparent 1px),
+    linear-gradient(180deg, rgb(17 23 19 / 0.03) 1px, transparent 1px),
+    var(--background);
+  background-size: 72px 72px;
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-instrument-sans), Arial, Helvetica, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 ::selection {
@@ -38,4 +58,45 @@ body {
 :focus-visible {
   outline: 3px solid var(--acv-gold);
   outline-offset: 3px;
+}
+
+@layer components {
+  .acv-display {
+    font-family: var(--font-big-shoulders), Impact, Haettenschweiler, "Arial Narrow", sans-serif;
+    font-weight: 800;
+    letter-spacing: 0;
+    line-height: 0.92;
+    text-transform: uppercase;
+  }
+
+  .acv-eyebrow {
+    color: var(--acv-clay);
+    font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+
+  .acv-route-band {
+    background:
+      linear-gradient(90deg, var(--acv-gold) 0 18%, var(--acv-clay) 18% 31%, var(--acv-palm) 31% 58%, var(--acv-hibiscus) 58% 70%, var(--acv-sky) 70% 100%);
+  }
+
+  .acv-woven-field {
+    background:
+      repeating-linear-gradient(90deg, rgb(215 168 62 / 0.12) 0 16px, transparent 16px 32px),
+      repeating-linear-gradient(0deg, rgb(168 218 220 / 0.1) 0 12px, transparent 12px 36px),
+      var(--acv-night);
+  }
+
+  .acv-map-grid {
+    background:
+      linear-gradient(90deg, rgb(245 239 226 / 0.08) 1px, transparent 1px),
+      linear-gradient(180deg, rgb(245 239 226 / 0.08) 1px, transparent 1px),
+      radial-gradient(circle at center, rgb(215 168 62 / 0.13) 1px, transparent 1.5px),
+      var(--acv-night);
+    background-size: 74px 74px, 74px 74px, 28px 28px, auto;
+  }
 }

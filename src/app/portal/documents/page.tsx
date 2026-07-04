@@ -1,19 +1,29 @@
-import { UploadCloud } from "lucide-react";
+import { Download } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { PortalNav } from "@/components/portal-nav";
 import { StatusPill } from "@/components/status-pill";
-import { uploadDocument } from "@/app/portal/documents/actions";
+import { UploadDocumentForm } from "@/app/portal/documents/upload-document-form";
 import { listAdminData } from "@/db/queries";
 import { requireAnyRole } from "@/lib/auth";
+import { defaultMaxDocumentUploadBytes } from "@/lib/document-upload";
 
 export const metadata = {
   title: "Documents",
 };
 
+function getMaxDocumentUploadBytes() {
+  const configuredLimit = Number(process.env.DOCUMENT_UPLOAD_MAX_BYTES);
+
+  return Number.isFinite(configuredLimit) && configuredLimit > 0
+    ? configuredLimit
+    : defaultMaxDocumentUploadBytes;
+}
+
 export default async function DocumentsPage() {
   const session = await requireAnyRole(["vendor", "sponsor", "partner"]);
   const organization = session.organization;
   const { documentRequirements, documents: allDocuments } = await listAdminData();
+  const maxUploadBytes = getMaxDocumentUploadBytes();
   const documents = organization
     ? allDocuments.filter((document) => document.organizationId === organization.id)
     : [];
@@ -40,28 +50,29 @@ export default async function DocumentsPage() {
                 <div>
                   <h2 className="text-xl font-semibold text-acv-ink">{requirement.name}</h2>
                   <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">{requirement.description}</p>
-                  <p className="mt-3 text-sm font-medium text-slate-500">
-                    {document?.fileName ?? "No file submitted"}
-                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
+                    <span>{document?.fileName ?? "No file submitted"}</span>
+                    {document?.storageKey ? (
+                      <a
+                        className="inline-flex items-center gap-1 font-semibold text-acv-palm hover:text-acv-palm/80"
+                        href={`/documents/${document.id}/download`}
+                      >
+                        <Download aria-hidden="true" className="size-4" />
+                        Download
+                      </a>
+                    ) : null}
+                  </div>
                 </div>
                 <StatusPill status={document?.status ?? "missing"} />
               </div>
               {document?.reviewerNote ? (
                 <p className="mt-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-800">{document.reviewerNote}</p>
               ) : null}
-              <form action={uploadDocument} className="mt-5 grid gap-3 rounded-lg bg-acv-paper p-3 sm:grid-cols-[1fr_auto]">
-                <input name="requirementId" type="hidden" value={requirement.id} />
-                <input
-                  className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
-                  name="file"
-                  required={requirement.required}
-                  type="file"
-                />
-                <button className="inline-flex items-center justify-center gap-2 rounded-md bg-acv-palm px-4 py-2 text-sm font-bold text-white hover:bg-acv-palm/90">
-                  <UploadCloud aria-hidden="true" className="size-4" />
-                  Upload
-                </button>
-              </form>
+              <UploadDocumentForm
+                maxUploadBytes={maxUploadBytes}
+                required={requirement.required}
+                requirementId={requirement.id}
+              />
             </article>
           );
         })}
