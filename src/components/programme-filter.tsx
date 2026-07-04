@@ -37,12 +37,14 @@ export function ProgrammeFilter({ events }: ProgrammeFilterProps) {
 
   return (
     <div className="space-y-5">
-      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-2">
-        <label className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2">
-          <CalendarDays aria-hidden="true" className="size-4 text-acv-clay" />
-          <span className="text-sm font-semibold text-slate-700">Day</span>
+      <div className="grid gap-3 rounded-md border border-acv-line bg-acv-porcelain p-3 shadow-[0_16px_40px_rgb(17_23_19/0.06)] sm:grid-cols-2">
+        <label className="flex items-center gap-3 rounded-md border border-acv-line bg-white px-3 py-2">
+          <span className="rounded-md bg-acv-night p-2 text-acv-gold">
+            <CalendarDays aria-hidden="true" className="size-4" />
+          </span>
+          <span className="font-mono text-xs font-bold uppercase text-acv-clay">Day</span>
           <select
-            className="ml-auto bg-transparent text-sm font-medium text-acv-ink outline-none"
+            className="ml-auto min-w-0 bg-transparent text-sm font-semibold text-acv-ink outline-none"
             value={day}
             onChange={(event) => setDay(event.target.value)}
           >
@@ -54,11 +56,13 @@ export function ProgrammeFilter({ events }: ProgrammeFilterProps) {
             ))}
           </select>
         </label>
-        <label className="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2">
-          <SlidersHorizontal aria-hidden="true" className="size-4 text-acv-clay" />
-          <span className="text-sm font-semibold text-slate-700">Category</span>
+        <label className="flex items-center gap-3 rounded-md border border-acv-line bg-white px-3 py-2">
+          <span className="rounded-md bg-acv-night p-2 text-acv-gold">
+            <SlidersHorizontal aria-hidden="true" className="size-4" />
+          </span>
+          <span className="font-mono text-xs font-bold uppercase text-acv-clay">Category</span>
           <select
-            className="ml-auto bg-transparent text-sm font-medium capitalize text-acv-ink outline-none"
+            className="ml-auto min-w-0 bg-transparent text-sm font-semibold capitalize text-acv-ink outline-none"
             value={category}
             onChange={(event) => setCategory(event.target.value)}
           >
@@ -75,22 +79,23 @@ export function ProgrammeFilter({ events }: ProgrammeFilterProps) {
       <div className="grid gap-3">
         {filteredEvents.map((event) => (
           <article
-            className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+            className="relative overflow-hidden rounded-md border border-acv-line bg-white p-4 shadow-[0_16px_40px_rgb(17_23_19/0.06)]"
             key={event.id}
           >
+            <div className="absolute inset-y-0 left-0 w-1 bg-acv-gold" />
             <button
               className="flex w-full flex-wrap items-start justify-between gap-3 text-left"
               type="button"
               onClick={() => setSelectedEventId(event.id)}
             >
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-acv-clay">
+                <p className="font-mono text-xs font-bold uppercase text-acv-clay">
                   {formatDay(event.day)} / {event.startsAt}-{event.endsAt}
                 </p>
-                <h2 className="mt-1 text-xl font-semibold text-acv-ink">{event.title}</h2>
+                <h2 className="mt-2 text-xl font-semibold text-acv-ink">{event.title}</h2>
               </div>
               <span className="flex items-center gap-2">
-                <span className="rounded-full bg-acv-palm/10 px-3 py-1 text-xs font-semibold capitalize text-acv-palm">
+                <span className="rounded-md bg-acv-palm px-3 py-1 text-xs font-semibold capitalize text-white">
                   {event.category}
                 </span>
                 <ChevronDown
@@ -101,27 +106,27 @@ export function ProgrammeFilter({ events }: ProgrammeFilterProps) {
                 />
               </span>
             </button>
-            <p className="mt-3 text-sm leading-6 text-slate-600">{event.description}</p>
+            <p className="mt-3 text-sm leading-6 text-slate-700">{event.description}</p>
             {activeEventId === event.id ? (
-              <div className="mt-4 grid gap-3 rounded-lg bg-acv-paper p-3 sm:grid-cols-3">
+              <div className="mt-4 grid gap-3 rounded-md border border-acv-line bg-acv-porcelain p-3 sm:grid-cols-3">
                 <div className="flex items-start gap-2">
                   <MapPin aria-hidden="true" className="mt-0.5 size-4 text-acv-palm" />
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Location</p>
+                    <p className="font-mono text-xs font-bold uppercase text-slate-500">Location</p>
                     <p className="mt-1 text-sm font-semibold text-acv-ink">{event.location}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
                   <Users aria-hidden="true" className="mt-0.5 size-4 text-acv-palm" />
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Audience</p>
+                    <p className="font-mono text-xs font-bold uppercase text-slate-500">Audience</p>
                     <p className="mt-1 text-sm font-semibold text-acv-ink">{event.audience}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
                   <Info aria-hidden="true" className="mt-0.5 size-4 text-acv-palm" />
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Plan ahead</p>
+                    <p className="font-mono text-xs font-bold uppercase text-slate-500">Plan ahead</p>
                     <p className="mt-1 text-sm font-semibold text-acv-ink">
                       Arrive 10 minutes early and follow stewarded queues.
                     </p>

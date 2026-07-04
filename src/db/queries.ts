@@ -85,6 +85,21 @@ export async function saveDocumentMetadata(input: SaveDocumentMetadataInput) {
     });
 }
 
+export async function getDocumentById(documentId: string) {
+  if (!process.env.DATABASE_URL) {
+    return null;
+  }
+
+  const db = getDb();
+  const [document] = await db
+    .select()
+    .from(documents)
+    .where(eq(documents.id, documentId))
+    .limit(1);
+
+  return document ?? null;
+}
+
 export async function reviewDocument(
   documentId: string,
   status: Extract<DocumentStatus, "approved" | "rejected">,

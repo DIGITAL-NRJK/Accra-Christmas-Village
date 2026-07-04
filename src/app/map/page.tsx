@@ -1,6 +1,4 @@
-import { PageHeader } from "@/components/page-header";
 import { VillageMap } from "@/components/village-map";
-import { zones } from "@/lib/data";
 
 export const metadata = {
   title: "Map",
@@ -9,26 +7,19 @@ export const metadata = {
 export default function MapPage() {
   return (
     <>
-      <PageHeader
-        eyebrow="Site map"
-        title="Gates, services and zones"
-        description="A structured view of the village layout, including public gates, service points, markets, sponsor activations and parking."
-      />
-      <section className="mx-auto w-full max-w-6xl px-4 pb-10 sm:px-6 lg:px-8">
+      <header className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mb-4 h-1.5 w-full max-w-2xl acv-route-band sm:mb-5" />
+        <p className="acv-eyebrow">Site map</p>
+        <h1 className="mt-3 max-w-5xl font-display text-4xl uppercase leading-none text-acv-ink sm:text-6xl lg:text-7xl">
+          Gates, services and zones
+        </h1>
+        <p className="mt-3 max-w-3xl text-base leading-7 text-slate-700 sm:mt-4 sm:text-lg">
+          Public gates, service points, markets, sponsor activations and parking in one compact
+          guide.
+        </p>
+      </header>
+      <section className="mx-auto w-full max-w-7xl px-4 pb-10 sm:px-6 lg:px-8">
         <VillageMap />
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {zones.map((zone) => (
-            <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm" key={zone.id}>
-              <div className="flex items-start justify-between gap-3">
-                <h2 className="text-lg font-semibold text-acv-ink">{zone.name}</h2>
-                <span className="rounded-full bg-acv-gold/25 px-2.5 py-1 text-xs font-bold text-acv-ink">
-                  {zone.code}
-                </span>
-              </div>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{zone.description}</p>
-            </article>
-          ))}
-        </div>
       </section>
     </>
   );

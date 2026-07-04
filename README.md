@@ -47,7 +47,7 @@ pnpm db:seed
 pnpm dev
 ```
 
-8. Deploy to Netlify. Connect the GitHub repo, add `DATABASE_URL`, and let Netlify run `pnpm build` using `netlify.toml`.
+8. Deploy to Netlify. Connect the GitHub repo, add `DATABASE_URL`, set `DOCUMENT_STORAGE_DRIVER=netlify-blobs`, and let Netlify run `pnpm build` using `netlify.toml`.
 
 ## Access And Roles
 
@@ -83,9 +83,18 @@ pnpm db:clear-demo-data
 
 ## Document Uploads
 
-V1 uses a storage abstraction in `src/lib/storage.ts`. The local mock upload flow stores document metadata through Drizzle when `DATABASE_URL` is configured and returns a `local://` mock object URL for UI testing.
+V1 uses a storage abstraction in `src/lib/storage.ts`. Local development defaults to an in-memory mock upload flow that stores document metadata through Drizzle when `DATABASE_URL` is configured and returns a `local://` object URL for UI testing.
 
-TODO: replace the mock storage adapter with Netlify Blobs, S3 or Cloudflare R2 before production document handling.
+Production document handling uses Netlify Blobs when `DOCUMENT_STORAGE_DRIVER=netlify-blobs` is set. On Netlify, the Blobs client reads site credentials from the function environment automatically. For local or CI access to a real store, set:
+
+```env
+DOCUMENT_STORAGE_DRIVER=netlify-blobs
+NETLIFY_BLOBS_STORE=participant-documents
+NETLIFY_BLOBS_SITE_ID=your-netlify-site-id
+NETLIFY_BLOBS_TOKEN=your-netlify-personal-access-token
+```
+
+Document uploads are limited to 10 MB by default through `DOCUMENT_UPLOAD_MAX_BYTES`; `DOCUMENT_UPLOAD_BODY_SIZE_LIMIT` controls the matching Next.js Server Actions body limit.
 
 ## Useful Scripts
 

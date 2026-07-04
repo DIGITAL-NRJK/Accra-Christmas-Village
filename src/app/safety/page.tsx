@@ -38,10 +38,16 @@ export default function SafetyPage() {
       />
       <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 pb-10 sm:px-6 lg:grid-cols-2 lg:px-8">
         {safetyItems.map((item) => (
-          <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm" key={item.title}>
-            <item.icon aria-hidden="true" className="size-6 text-acv-clay" />
+          <article
+            className="relative overflow-hidden rounded-md border border-acv-line bg-white p-5 shadow-[0_16px_40px_rgb(17_23_19/0.06)]"
+            key={item.title}
+          >
+            <div className="absolute inset-y-0 left-0 w-1 bg-acv-clay" />
+            <span className="flex size-10 items-center justify-center rounded-md bg-acv-night text-acv-gold">
+              <item.icon aria-hidden="true" className="size-5" />
+            </span>
             <h2 className="mt-4 text-xl font-semibold text-acv-ink">{item.title}</h2>
-            <p className="mt-2 leading-7 text-slate-600">{item.body}</p>
+            <p className="mt-2 leading-7 text-slate-700">{item.body}</p>
           </article>
         ))}
       </section>

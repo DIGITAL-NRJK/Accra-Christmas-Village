@@ -37,9 +37,12 @@ export default function FaqPage() {
       />
       <section className="mx-auto grid w-full max-w-4xl gap-3 px-4 pb-10 sm:px-6 lg:px-8">
         {faqs.map((faq) => (
-          <details className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm" key={faq.question}>
+          <details
+            className="rounded-md border border-acv-line bg-acv-porcelain p-5 shadow-[0_16px_40px_rgb(17_23_19/0.06)]"
+            key={faq.question}
+          >
             <summary className="cursor-pointer text-lg font-semibold text-acv-ink">{faq.question}</summary>
-            <p className="mt-3 leading-7 text-slate-600">{faq.answer}</p>
+            <p className="mt-3 leading-7 text-slate-700">{faq.answer}</p>
           </details>
         ))}
       </section>

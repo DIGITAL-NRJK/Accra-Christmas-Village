@@ -1,3 +1,4 @@
+import { Download } from "lucide-react";
 import { AdminNav } from "@/components/admin-nav";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
@@ -30,7 +31,18 @@ export default async function AdminDocumentsPage() {
                 <div>
                   <p className="text-sm font-semibold text-acv-clay">{organization?.name}</p>
                   <h2 className="mt-1 text-xl font-semibold text-acv-ink">{requirement?.name}</h2>
-                  <p className="mt-2 text-sm text-slate-600">{document.fileName ?? "No file submitted"}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+                    <span>{document.fileName ?? "No file submitted"}</span>
+                    {document.storageKey ? (
+                      <a
+                        className="inline-flex items-center gap-1 font-semibold text-acv-palm hover:text-acv-palm/80"
+                        href={`/documents/${document.id}/download`}
+                      >
+                        <Download aria-hidden="true" className="size-4" />
+                        Download
+                      </a>
+                    ) : null}
+                  </div>
                   {document.reviewerNote ? (
                     <p className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-800">{document.reviewerNote}</p>
                   ) : null}
