@@ -6,14 +6,14 @@ function getDownloadFileName(fileName: string | null) {
   return fileName?.trim() || "accra-christmas-village-document";
 }
 
-function getContentDisposition(fileName: string) {
+function getContentDisposition(fileName: string, disposition: "attachment" | "inline") {
   const asciiName = fileName.replace(/[^\x20-\x7E]+/g, "_").replace(/[\\"]/g, "_");
 
-  return `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+  return `${disposition}; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ documentId: string }> },
 ) {
   const { documentId } = await params;
@@ -55,9 +55,11 @@ export async function GET(
   }
 
   const fileName = getDownloadFileName(document.fileName);
+  const searchParams = new URL(request.url).searchParams;
+  const disposition = searchParams.get("disposition") === "inline" ? "inline" : "attachment";
   const headers = new Headers({
     "Cache-Control": "private, no-store",
-    "Content-Disposition": getContentDisposition(fileName),
+    "Content-Disposition": getContentDisposition(fileName, disposition),
     "Content-Type": document.fileType || file.type || "application/octet-stream",
   });
 

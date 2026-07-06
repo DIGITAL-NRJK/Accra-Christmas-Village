@@ -38,7 +38,7 @@ export default async function AdminVendorsPage() {
                 const zone = zones.find((candidate) => candidate.id === stand?.zoneId);
 
                 return (
-                  <tr className="border-t border-slate-100" key={vendor.id}>
+                  <tr className="border-t border-slate-100" id={vendor.id} key={vendor.id}>
                     <td className="px-4 py-3">
                       <p className="font-semibold text-acv-ink">{vendor.tradingName}</p>
                       <p className="text-xs text-slate-500">{organization?.contactEmail}</p>

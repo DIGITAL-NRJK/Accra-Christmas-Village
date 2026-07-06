@@ -9,7 +9,6 @@ import {
   Sparkles,
   Store,
 } from "lucide-react";
-import { AnnouncementBanner } from "@/components/announcement-banner";
 import { HeroCarousel } from "@/components/hero-carousel";
 import { MetricCard } from "@/components/metric-card";
 import { listAdminData } from "@/db/queries";
@@ -110,7 +109,6 @@ export default async function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(eventJsonLd) }}
       />
-      <AnnouncementBanner />
       <HeroCarousel slides={publishedHeroSlides} />
 
       <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-8 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
