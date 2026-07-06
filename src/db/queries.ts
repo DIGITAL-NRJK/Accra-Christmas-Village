@@ -762,6 +762,8 @@ export type CreateProgrammeItemInput = {
   published: boolean;
 };
 
+export type SaveProgrammeItemInput = CreateProgrammeItemInput;
+
 export type SaveHeroSlideInput = Omit<HeroSlide, "id"> & {
   id?: string;
 };
@@ -883,6 +885,30 @@ export async function updateProgrammePublication(eventId: string, published: boo
   const db = getDb();
 
   await db.update(events).set({ published }).where(eq(events.id, eventId));
+}
+
+export async function updateProgrammeItem(eventId: string, input: SaveProgrammeItemInput) {
+  if (!process.env.DATABASE_URL || !eventId) {
+    console.info("Skipped programme item update because DATABASE_URL is not set.", {
+      eventId,
+      input,
+    });
+    return;
+  }
+
+  const db = getDb();
+
+  await db.update(events).set(input).where(eq(events.id, eventId));
+}
+
+export async function deleteProgrammeItem(eventId: string) {
+  if (!process.env.DATABASE_URL || !eventId) {
+    return;
+  }
+
+  const db = getDb();
+
+  await db.delete(events).where(eq(events.id, eventId));
 }
 
 export type CreateAnnouncementInput = {

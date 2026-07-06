@@ -1,12 +1,35 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createProgrammeItem, updateProgrammePublication } from "@/db/queries";
+import {
+  createProgrammeItem,
+  deleteProgrammeItem,
+  updateProgrammeItem,
+  updateProgrammePublication,
+  type SaveProgrammeItemInput,
+} from "@/db/queries";
 import { requireAnyRole } from "@/lib/auth";
 
-export async function createProgrammeItemAction(formData: FormData) {
-  await requireAnyRole(["admin", "super_admin"]);
+export type ProgrammeItemActionState = {
+  message: string;
+  status: "idle" | "error" | "success";
+};
 
+function textValue(formData: FormData, name: string, fallback = "") {
+  return String(formData.get(name) ?? fallback).trim();
+}
+
+function getErrorState(message: string): ProgrammeItemActionState {
+  return { message, status: "error" };
+}
+
+function isPublishedValue(formData: FormData) {
+  const value = formData.get("published");
+
+  return value === "on" || value === "true";
+}
+
+function programmeItemInput(formData: FormData): SaveProgrammeItemInput | { error: string } {
   const title = String(formData.get("title") ?? "").trim();
   const day = String(formData.get("day") ?? "").trim();
   const startsAt = String(formData.get("startsAt") ?? "").trim();
@@ -15,13 +38,17 @@ export async function createProgrammeItemAction(formData: FormData) {
   const location = String(formData.get("location") ?? "").trim();
   const audience = String(formData.get("audience") ?? "").trim() || "All visitors";
   const description = String(formData.get("description") ?? "").trim();
-  const published = formData.get("published") === "on";
+  const published = isPublishedValue(formData);
 
   if (!title || !day || !startsAt || !endsAt || !category || !location || !description) {
-    return;
+    return { error: "Complete title, date, time, category, location and description." };
   }
 
-  await createProgrammeItem({
+  if (startsAt >= endsAt) {
+    return { error: "End time must be after start time." };
+  }
+
+  return {
     title,
     day,
     startsAt,
@@ -31,22 +58,77 @@ export async function createProgrammeItemAction(formData: FormData) {
     audience,
     description,
     published,
-  });
+  };
+}
 
+function revalidateProgrammePaths() {
   revalidatePath("/admin");
   revalidatePath("/admin/programme");
   revalidatePath("/programme");
+}
+
+export async function createProgrammeItemAction(
+  _previousState: ProgrammeItemActionState,
+  formData: FormData,
+): Promise<ProgrammeItemActionState> {
+  await requireAnyRole(["admin", "super_admin"]);
+
+  const input = programmeItemInput(formData);
+
+  if ("error" in input) {
+    return getErrorState(input.error);
+  }
+
+  await createProgrammeItem(input);
+  revalidateProgrammePaths();
+
+  return {
+    message: "Programme item created.",
+    status: "success",
+  };
+}
+
+export async function updateProgrammeItemAction(
+  _previousState: ProgrammeItemActionState,
+  formData: FormData,
+): Promise<ProgrammeItemActionState> {
+  await requireAnyRole(["admin", "super_admin"]);
+
+  const eventId = textValue(formData, "eventId");
+  const input = programmeItemInput(formData);
+
+  if (!eventId) {
+    return getErrorState("The programme item could not be identified.");
+  }
+
+  if ("error" in input) {
+    return getErrorState(input.error);
+  }
+
+  await updateProgrammeItem(eventId, input);
+  revalidateProgrammePaths();
+
+  return {
+    message: "Programme item updated.",
+    status: "success",
+  };
 }
 
 export async function updateProgrammePublicationAction(formData: FormData) {
   await requireAnyRole(["admin", "super_admin"]);
 
   const eventId = String(formData.get("eventId") ?? "");
-  const published = formData.get("published") === "on";
+  const published = isPublishedValue(formData);
 
   await updateProgrammePublication(eventId, published);
+  revalidateProgrammePaths();
+}
 
-  revalidatePath("/admin");
-  revalidatePath("/admin/programme");
-  revalidatePath("/programme");
+export async function deleteProgrammeItemAction(formData: FormData) {
+  await requireAnyRole(["admin", "super_admin"]);
+
+  const eventId = textValue(formData, "eventId");
+
+  await deleteProgrammeItem(eventId);
+  revalidateProgrammePaths();
 }
