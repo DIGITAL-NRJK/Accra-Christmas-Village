@@ -15,7 +15,7 @@ import {
   zones,
 } from "@/db/schema";
 import { defaultHeroSlides } from "@/lib/hero-slides";
-import type { DocumentStatus, HeroSlide, ParticipantRole, Role } from "@/lib/types";
+import type { DocumentStatus, HeroSlide, ParticipantRole, Role, Sponsor } from "@/lib/types";
 
 const participantRoles: ParticipantRole[] = ["vendor", "sponsor", "partner"];
 const organizerOrganizationId = "org-festival-ops";
@@ -748,6 +748,170 @@ export async function assignStand(input: AssignStandInput) {
   }
 
   await db.update(stands).set({ status: "assigned" }).where(eq(stands.id, input.standId));
+}
+
+export type SaveSponsorInput = Pick<
+  Sponsor,
+  "activationLocation" | "activationPlan" | "brandName" | "packageLevel" | "standId" | "status" | "summary"
+> & {
+  contactEmail: string;
+  contactPhone: string;
+};
+
+async function createUniqueSponsorSlug(brandName: string, currentSponsorId?: string) {
+  const db = getDb();
+  const baseSlug = slugify(brandName);
+
+  for (let index = 0; index < 50; index += 1) {
+    const candidate = index === 0 ? baseSlug : `${baseSlug}-${index + 1}`;
+    const [existingSponsor] = await db
+      .select({ id: sponsors.id })
+      .from(sponsors)
+      .where(eq(sponsors.slug, candidate))
+      .limit(1);
+
+    if (!existingSponsor || existingSponsor.id === currentSponsorId) {
+      return candidate;
+    }
+  }
+
+  return `${baseSlug}-${crypto.randomUUID().slice(0, 8)}`;
+}
+
+async function releaseStandIfEmpty(standId: string | null) {
+  if (!standId || !process.env.DATABASE_URL) {
+    return;
+  }
+
+  const db = getDb();
+  const [assignedVendor] = await db
+    .select({ id: vendors.id })
+    .from(vendors)
+    .where(eq(vendors.standId, standId))
+    .limit(1);
+  const [assignedSponsor] = await db
+    .select({ id: sponsors.id })
+    .from(sponsors)
+    .where(eq(sponsors.standId, standId))
+    .limit(1);
+
+  if (!assignedVendor && !assignedSponsor) {
+    await db.update(stands).set({ status: "available" }).where(eq(stands.id, standId));
+  }
+}
+
+export async function createSponsor(input: SaveSponsorInput) {
+  if (!process.env.DATABASE_URL) {
+    console.info("Skipped sponsor creation because DATABASE_URL is not set.", input);
+    return;
+  }
+
+  const db = getDb();
+  const organizationId = crypto.randomUUID();
+  const sponsorId = crypto.randomUUID();
+  const slug = await createUniqueSponsorSlug(input.brandName);
+
+  await db.insert(organizations).values({
+    id: organizationId,
+    name: input.brandName,
+    type: "sponsor",
+    contactEmail: input.contactEmail,
+    contactPhone: input.contactPhone,
+    status: input.status === "prospect" ? "pending" : "active",
+  });
+
+  await db.insert(sponsors).values({
+    id: sponsorId,
+    organizationId,
+    slug,
+    brandName: input.brandName,
+    packageLevel: input.packageLevel,
+    activationLocation: input.activationLocation,
+    standId: input.standId,
+    status: input.status,
+    summary: input.summary,
+    activationPlan: input.activationPlan,
+  });
+
+  if (input.standId) {
+    await db.update(stands).set({ status: "assigned" }).where(eq(stands.id, input.standId));
+  }
+}
+
+export async function updateSponsor(sponsorId: string, organizationId: string, input: SaveSponsorInput) {
+  if (!process.env.DATABASE_URL || !sponsorId || !organizationId) {
+    console.info("Skipped sponsor update because DATABASE_URL is not set or identifiers are missing.", {
+      organizationId,
+      sponsorId,
+      input,
+    });
+    return;
+  }
+
+  const db = getDb();
+  const [currentSponsor] = await db
+    .select({ standId: sponsors.standId })
+    .from(sponsors)
+    .where(eq(sponsors.id, sponsorId))
+    .limit(1);
+  const slug = await createUniqueSponsorSlug(input.brandName, sponsorId);
+
+  await db
+    .update(organizations)
+    .set({
+      name: input.brandName,
+      contactEmail: input.contactEmail,
+      contactPhone: input.contactPhone,
+      status: input.status === "prospect" ? "pending" : "active",
+    })
+    .where(eq(organizations.id, organizationId));
+
+  await db
+    .update(sponsors)
+    .set({
+      slug,
+      brandName: input.brandName,
+      packageLevel: input.packageLevel,
+      activationLocation: input.activationLocation,
+      standId: input.standId,
+      status: input.status,
+      summary: input.summary,
+      activationPlan: input.activationPlan,
+    })
+    .where(eq(sponsors.id, sponsorId));
+
+  if (currentSponsor?.standId && currentSponsor.standId !== input.standId) {
+    await releaseStandIfEmpty(currentSponsor.standId);
+  }
+
+  if (input.standId) {
+    await db.update(stands).set({ status: "assigned" }).where(eq(stands.id, input.standId));
+  }
+}
+
+export async function updateSponsorStatus(sponsorId: string, status: Sponsor["status"]) {
+  if (!process.env.DATABASE_URL || !sponsorId) {
+    return;
+  }
+
+  const db = getDb();
+  await db.update(sponsors).set({ status }).where(eq(sponsors.id, sponsorId));
+}
+
+export async function deleteSponsor(sponsorId: string) {
+  if (!process.env.DATABASE_URL || !sponsorId) {
+    return;
+  }
+
+  const db = getDb();
+  const [currentSponsor] = await db
+    .select({ standId: sponsors.standId })
+    .from(sponsors)
+    .where(eq(sponsors.id, sponsorId))
+    .limit(1);
+
+  await db.delete(sponsors).where(eq(sponsors.id, sponsorId));
+  await releaseStandIfEmpty(currentSponsor?.standId ?? null);
 }
 
 export type CreateProgrammeItemInput = {

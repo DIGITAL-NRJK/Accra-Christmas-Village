@@ -2,6 +2,7 @@ import { inArray } from "drizzle-orm";
 import { getDb } from "./client";
 import { loadLocalEnv } from "./load-env";
 import {
+  accessRequests,
   announcements,
   auditLogs,
   documents,
@@ -52,6 +53,14 @@ const seededIncidentIds = [
   "incident-power-check",
 ];
 
+const seededAccessRequestIds = [
+  "access-demo-pending-vendor",
+  "access-demo-pending-sponsor",
+  "access-demo-approved-partner",
+  "access-demo-rejected-vendor",
+  "access-demo-cancelled-sponsor",
+];
+
 function requireDatabaseUrl() {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL is required. Add it to .env before running pnpm db:clear-demo-data.");
@@ -62,6 +71,7 @@ async function main() {
   requireDatabaseUrl();
   const db = getDb();
 
+  await db.delete(accessRequests).where(inArray(accessRequests.id, seededAccessRequestIds));
   await db.delete(auditLogs).where(inArray(auditLogs.actorUserId, demoUserIds));
   await db.delete(incidents).where(inArray(incidents.id, seededIncidentIds));
   await db.delete(announcements).where(inArray(announcements.id, seededAnnouncementIds));
