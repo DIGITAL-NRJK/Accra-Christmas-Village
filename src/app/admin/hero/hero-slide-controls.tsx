@@ -9,6 +9,7 @@ import {
 } from "@/app/admin/hero/actions";
 
 type HeroSlideControlsProps = {
+  canDelete: boolean;
   published: boolean;
   slideId: string;
   title: string;
@@ -35,7 +36,7 @@ function SubmitButton({ children, className, icon, pendingLabel }: SubmitButtonP
   );
 }
 
-export function HeroSlideControls({ published, slideId, title }: HeroSlideControlsProps) {
+export function HeroSlideControls({ canDelete, published, slideId, title }: HeroSlideControlsProps) {
   function confirmDelete(event: FormEvent<HTMLFormElement>) {
     if (!window.confirm(`Delete "${title}" from the homepage hero?`)) {
       event.preventDefault();
@@ -55,16 +56,22 @@ export function HeroSlideControls({ published, slideId, title }: HeroSlideContro
           {published ? "Unpublish" : "Publish"}
         </SubmitButton>
       </form>
-      <form action={deleteHeroSlideAction} onSubmit={confirmDelete}>
-        <input name="slideId" type="hidden" value={slideId} />
-        <SubmitButton
-          className="rounded-md border border-red-200 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50"
-          icon={<Trash2 aria-hidden="true" className="size-4" />}
-          pendingLabel="Deleting"
-        >
-          Delete
-        </SubmitButton>
-      </form>
+      {canDelete ? (
+        <form action={deleteHeroSlideAction} onSubmit={confirmDelete}>
+          <input name="slideId" type="hidden" value={slideId} />
+          <SubmitButton
+            className="rounded-md border border-red-200 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50"
+            icon={<Trash2 aria-hidden="true" className="size-4" />}
+            pendingLabel="Deleting"
+          >
+            Delete
+          </SubmitButton>
+        </form>
+      ) : (
+        <span className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-bold text-slate-500">
+          Base slide locked
+        </span>
+      )}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
   defaultMaxHeroImageUploadBytes,
   formatHeroImageFileSize,
 } from "@/lib/hero-image-upload";
+import { defaultHeroSlides } from "@/lib/hero-slides";
 
 export const metadata = {
   title: "Hero",
@@ -18,6 +19,10 @@ function getMaxHeroImageUploadBytes() {
   return Number.isFinite(configuredLimit) && configuredLimit > 0
     ? configuredLimit
     : defaultMaxHeroImageUploadBytes;
+}
+
+function isBaseHeroSlide(slideId: string) {
+  return defaultHeroSlides.some((slide) => slide.id === slideId);
 }
 
 export default async function AdminHeroPage() {
@@ -90,6 +95,7 @@ export default async function AdminHeroPage() {
                 <HeroSlideForm maxUploadBytes={maxUploadBytes} mode="update" slide={slide} />
 
                 <HeroSlideControls
+                  canDelete={!isBaseHeroSlide(slide.id)}
                   published={slide.published}
                   slideId={slide.id}
                   title={slide.title}

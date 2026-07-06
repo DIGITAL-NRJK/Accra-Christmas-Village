@@ -72,6 +72,7 @@ export default async function AdminSponsorsPage() {
             return (
               <article
                 className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+                id={sponsor.id}
                 key={sponsor.id}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 p-5">

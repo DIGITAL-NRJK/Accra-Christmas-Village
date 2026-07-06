@@ -11,7 +11,6 @@ const adminNav = [
   { href: "/admin/stands", label: "Stands" },
   { href: "/admin/programme", label: "Programme" },
   { href: "/admin/announcements", label: "Announcements" },
-  { href: "/admin/compliance", label: "Compliance" },
 ];
 
 export function AdminNav({ activeHref }: { activeHref: string }) {

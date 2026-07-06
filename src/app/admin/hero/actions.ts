@@ -15,6 +15,7 @@ import {
   defaultMaxHeroImageUploadBytes,
   formatHeroImageFileSize,
 } from "@/lib/hero-image-upload";
+import { defaultHeroSlides } from "@/lib/hero-slides";
 import { heroImageStorage } from "@/lib/storage";
 
 export type HeroSlideActionState = {
@@ -184,6 +185,10 @@ function revalidateHeroPaths() {
   revalidatePath("/admin/hero");
 }
 
+function isBaseHeroSlide(slideId: string) {
+  return defaultHeroSlides.some((slide) => slide.id === slideId);
+}
+
 export async function createHeroSlideAction(
   _previousState: HeroSlideActionState,
   formData: FormData,
@@ -260,7 +265,7 @@ export async function deleteHeroSlideAction(formData: FormData) {
 
   const slideId = textValue(formData, "slideId");
 
-  if (!slideId) {
+  if (!slideId || isBaseHeroSlide(slideId)) {
     return;
   }
 

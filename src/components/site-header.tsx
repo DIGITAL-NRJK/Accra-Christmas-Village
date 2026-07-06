@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Gift, MapPin, Ticket } from "lucide-react";
+import { AnnouncementBanner } from "@/components/announcement-banner";
 import { AuthControls } from "@/components/auth-controls";
 
 const publicLinks = [
@@ -12,7 +13,7 @@ const publicLinks = [
   { href: "/faq", label: "FAQ", code: "?" },
 ];
 
-export function SiteHeader() {
+export async function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-acv-gold/[0.35] bg-acv-night/[0.96] text-white shadow-[0_18px_45px_rgb(0_0_0/0.18)] backdrop-blur-xl">
       <div className="flex w-full flex-col">
@@ -83,6 +84,7 @@ export function SiteHeader() {
         </div>
       </div>
       <div className="h-1.5 acv-route-band" />
+      <AnnouncementBanner />
     </header>
   );
 }

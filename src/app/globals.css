@@ -99,4 +99,26 @@ body {
       var(--acv-night);
     background-size: 74px 74px, 74px 74px, 28px 28px, auto;
   }
+
+  .animate-acv-topbar {
+    animation: acv-topbar-in 420ms ease-out both;
+  }
+}
+
+@keyframes acv-topbar-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-acv-topbar {
+    animation: none;
+  }
 }
