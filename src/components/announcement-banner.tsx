@@ -7,15 +7,26 @@ type AnnouncementBannerProps = {
 };
 
 export async function AnnouncementBanner({ audience = "all" }: AnnouncementBannerProps) {
-  const [databaseAnnouncement] = await listPublishedAnnouncements(audience);
-  const [fallbackAnnouncement] = getPublishedAnnouncements(
+  const databaseAnnouncements = await listPublishedAnnouncements(audience);
+  const fallbackAnnouncements = getPublishedAnnouncements(
     audience === "partner" ? "vendor" : audience,
   );
-  const announcement = databaseAnnouncement ?? fallbackAnnouncement;
+  const announcements = databaseAnnouncements.length > 0
+    ? databaseAnnouncements
+    : fallbackAnnouncements;
 
-  if (!announcement) {
+  if (announcements.length === 0) {
     return null;
   }
 
-  return <DismissibleAnnouncement body={announcement.body} title={announcement.title} />;
+  return (
+    <DismissibleAnnouncement
+      announcements={announcements.map((announcement) => ({
+        body: announcement.body,
+        id: announcement.id,
+        priority: announcement.priority,
+        title: announcement.title,
+      }))}
+    />
+  );
 }

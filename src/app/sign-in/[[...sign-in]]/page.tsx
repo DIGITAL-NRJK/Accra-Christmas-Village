@@ -1,6 +1,14 @@
 import { SignIn } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 
-export default function SignInPage() {
+export default async function SignInPage() {
+  const user = await currentUser();
+
+  if (user) {
+    redirect("/portal");
+  }
+
   return (
     <div className="grid min-h-screen place-items-center bg-acv-paper px-4 py-10">
       <section className="grid w-full max-w-5xl gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
@@ -16,7 +24,7 @@ export default function SignInPage() {
           </p>
         </div>
         <div className="flex justify-center">
-          <SignIn />
+          <SignIn fallbackRedirectUrl="/portal" forceRedirectUrl="/portal" />
         </div>
       </section>
     </div>

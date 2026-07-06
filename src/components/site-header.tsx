@@ -1,7 +1,10 @@
 import Link from "next/link";
-import { Gift, MapPin, Ticket } from "lucide-react";
+import { MapPin, Ticket } from "lucide-react";
 import { AnnouncementBanner } from "@/components/announcement-banner";
 import { AuthControls } from "@/components/auth-controls";
+import { BrandLogo } from "@/components/brand-logo";
+import { getCurrentAppSession } from "@/lib/auth";
+import type { Role } from "@/lib/types";
 
 const publicLinks = [
   { href: "/map", label: "Map", code: "A" },
@@ -13,17 +16,33 @@ const publicLinks = [
   { href: "/faq", label: "FAQ", code: "?" },
 ];
 
+function getAnnouncementAudience(role: Role | undefined) {
+  if (role === "vendor" || role === "sponsor" || role === "partner") {
+    return role;
+  }
+
+  if (role === "admin" || role === "super_admin") {
+    return "admin";
+  }
+
+  return "all";
+}
+
 export async function SiteHeader() {
+  const session = await getCurrentAppSession();
+  const announcementAudience = getAnnouncementAudience(session?.role);
+
   return (
     <header className="sticky top-0 z-50 border-b border-acv-gold/[0.35] bg-acv-night/[0.96] text-white shadow-[0_18px_45px_rgb(0_0_0/0.18)] backdrop-blur-xl">
+      <AnnouncementBanner audience={announcementAudience} />
       <div className="flex w-full flex-col">
         <div className="flex min-h-[74px] items-center gap-4 px-4 py-3 sm:px-6 lg:px-8 2xl:px-10">
           <Link
             className="group flex min-w-0 shrink-0 items-center gap-3 font-semibold lg:max-w-[360px] xl:max-w-[420px]"
             href="/"
           >
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-acv-gold text-acv-night shadow-[inset_0_-3px_0_rgb(17_23_19/0.18)] transition group-hover:bg-white">
-              <Gift aria-hidden="true" className="size-5" />
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-lg shadow-[inset_0_-3px_0_rgb(17_23_19/0.18)] transition group-hover:scale-[1.03]">
+              <BrandLogo className="size-11" />
             </span>
             <span className="min-w-0 leading-tight">
               <span className="block truncate font-display text-2xl uppercase leading-none sm:text-3xl xl:text-[2rem]">
@@ -84,7 +103,6 @@ export async function SiteHeader() {
         </div>
       </div>
       <div className="h-1.5 acv-route-band" />
-      <AnnouncementBanner />
     </header>
   );
 }

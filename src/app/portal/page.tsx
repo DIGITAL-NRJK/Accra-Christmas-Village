@@ -12,7 +12,6 @@ import {
   Sparkles,
   Store,
 } from "lucide-react";
-import { AnnouncementBanner } from "@/components/announcement-banner";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
 import { PortalNav } from "@/components/portal-nav";
@@ -75,10 +74,6 @@ const roleConfig: Record<ParticipantRole, {
     instructions: ["Staff list confirmation", "Operations contact assigned", "Service route briefing", "Daily check-in at control desk"],
   },
 };
-
-function getAnnouncementAudience(role: Role) {
-  return role === "sponsor" ? "sponsor" : role === "partner" ? "partner" : "vendor";
-}
 
 function getAccessRequestCopy(status?: string) {
   if (status === "pending") {
@@ -286,7 +281,6 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
   }
 
   const config = roleConfig[effectiveRole];
-  const portalRole = getAnnouncementAudience(effectiveRole);
   const organization = effectiveOrganization;
   const placement = await getParticipantPlacement(organization.id);
   const vendor = placement.vendor ?? getVendorByOrganization(organization.id);
@@ -300,7 +294,6 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
 
   return (
     <>
-      <AnnouncementBanner audience={portalRole} />
       {isAdminPreview ? (
         <div className="border-b border-acv-gold/30 bg-acv-gold/10">
           <div className="mx-auto w-full max-w-6xl px-4 py-3 text-sm font-semibold text-acv-ink sm:px-6 lg:px-8">

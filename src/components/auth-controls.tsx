@@ -20,13 +20,13 @@ export function AuthControls({ compact = false }: AuthControlsProps = {}) {
   return (
     <div className="flex items-center gap-2">
       <Show when="signed-out">
-        <SignInButton mode="modal">
+        <SignInButton fallbackRedirectUrl="/portal" forceRedirectUrl="/portal" mode="modal">
           <button className={signInClass}>
             <LogIn aria-hidden="true" className="size-4 text-acv-gold" />
             {signInLabel}
           </button>
         </SignInButton>
-        <SignUpButton mode="modal">
+        <SignUpButton fallbackRedirectUrl="/portal" forceRedirectUrl="/portal" mode="modal">
           <button className={signUpClass}>
             <UserPlus aria-hidden="true" className="size-4" />
             {signUpLabel}
