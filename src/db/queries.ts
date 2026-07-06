@@ -642,6 +642,33 @@ export async function listPublishedAnnouncements(audience: string) {
   });
 }
 
+export async function listTopbarAnnouncements() {
+  if (!process.env.DATABASE_URL) {
+    return [];
+  }
+
+  const db = getDb();
+  const rows = await db.select().from(announcements).orderBy(desc(announcements.createdAt));
+
+  return rows
+    .filter((announcement) => announcement.published)
+    .sort((first, second) => {
+      if (first.priority === second.priority) {
+        return second.createdAt.getTime() - first.createdAt.getTime();
+      }
+
+      if (first.priority === "high") {
+        return -1;
+      }
+
+      if (second.priority === "high") {
+        return 1;
+      }
+
+      return 0;
+    });
+}
+
 export async function getParticipantPlacement(organizationId: string) {
   if (!process.env.DATABASE_URL) {
     return { vendor: null, sponsor: null, stand: null, zone: null };
