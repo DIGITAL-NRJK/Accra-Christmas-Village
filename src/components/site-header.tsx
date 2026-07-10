@@ -3,8 +3,6 @@ import { MapPin, Ticket } from "lucide-react";
 import { AnnouncementBanner } from "@/components/announcement-banner";
 import { AuthControls } from "@/components/auth-controls";
 import { BrandLogo } from "@/components/brand-logo";
-import { getCurrentAppSession } from "@/lib/auth";
-import type { Role } from "@/lib/types";
 
 const publicLinks = [
   { href: "/map", label: "Map", code: "A" },
@@ -16,25 +14,10 @@ const publicLinks = [
   { href: "/faq", label: "FAQ", code: "?" },
 ];
 
-function getAnnouncementAudience(role: Role | undefined) {
-  if (role === "vendor" || role === "sponsor" || role === "partner") {
-    return role;
-  }
-
-  if (role === "admin" || role === "super_admin") {
-    return "admin";
-  }
-
-  return "all";
-}
-
 export async function SiteHeader() {
-  const session = await getCurrentAppSession();
-  const announcementAudience = getAnnouncementAudience(session?.role);
-
   return (
     <header className="sticky top-0 z-50 border-b border-acv-gold/[0.35] bg-acv-night/[0.96] text-white shadow-[0_18px_45px_rgb(0_0_0/0.18)] backdrop-blur-xl">
-      <AnnouncementBanner audience={announcementAudience} />
+      <AnnouncementBanner />
       <div className="flex w-full flex-col">
         <div className="flex min-h-[74px] items-center gap-4 px-4 py-3 sm:px-6 lg:px-8 2xl:px-10">
           <Link

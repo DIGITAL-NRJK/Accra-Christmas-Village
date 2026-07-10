@@ -1,16 +1,10 @@
 import { DismissibleAnnouncement } from "@/components/dismissible-announcement";
-import { listPublishedAnnouncements } from "@/db/queries";
-import { getPublishedAnnouncements } from "@/lib/data";
+import { listTopbarAnnouncements } from "@/db/queries";
+import { getTopbarAnnouncements } from "@/lib/data";
 
-type AnnouncementBannerProps = {
-  audience?: "all" | "vendor" | "sponsor" | "partner" | "admin";
-};
-
-export async function AnnouncementBanner({ audience = "all" }: AnnouncementBannerProps) {
-  const databaseAnnouncements = await listPublishedAnnouncements(audience);
-  const fallbackAnnouncements = getPublishedAnnouncements(
-    audience === "partner" ? "vendor" : audience,
-  );
+export async function AnnouncementBanner() {
+  const databaseAnnouncements = await listTopbarAnnouncements();
+  const fallbackAnnouncements = getTopbarAnnouncements();
   const announcements = databaseAnnouncements.length > 0
     ? databaseAnnouncements
     : fallbackAnnouncements;

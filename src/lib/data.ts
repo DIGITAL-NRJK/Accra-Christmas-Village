@@ -739,3 +739,7 @@ export function getPublishedAnnouncements(audience: "all" | "vendor" | "sponsor"
       (announcement.audience === "all" || announcement.audience === audience),
   );
 }
+
+export function getTopbarAnnouncements() {
+  return announcements.filter((announcement) => announcement.published);
+}

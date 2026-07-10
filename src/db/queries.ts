@@ -642,6 +642,33 @@ export async function listPublishedAnnouncements(audience: string) {
   });
 }
 
+export async function listTopbarAnnouncements() {
+  if (!process.env.DATABASE_URL) {
+    return [];
+  }
+
+  const db = getDb();
+  const rows = await db.select().from(announcements).orderBy(desc(announcements.createdAt));
+
+  return rows
+    .filter((announcement) => announcement.published)
+    .sort((first, second) => {
+      if (first.priority === second.priority) {
+        return second.createdAt.getTime() - first.createdAt.getTime();
+      }
+
+      if (first.priority === "high") {
+        return -1;
+      }
+
+      if (second.priority === "high") {
+        return 1;
+      }
+
+      return 0;
+    });
+}
+
 export async function getParticipantPlacement(organizationId: string) {
   if (!process.env.DATABASE_URL) {
     return { vendor: null, sponsor: null, stand: null, zone: null };
@@ -1081,6 +1108,8 @@ export type CreateAnnouncementInput = {
   audience: string;
   priority: string;
   published: boolean;
+  startsAt: Date;
+  endsAt: Date | null;
 };
 
 export async function createAnnouncement(input: CreateAnnouncementInput) {
@@ -1094,9 +1123,41 @@ export async function createAnnouncement(input: CreateAnnouncementInput) {
   await db.insert(announcements).values({
     id: crypto.randomUUID(),
     ...input,
-    startsAt: new Date(),
-    endsAt: null,
   });
+}
+
+export async function updateAnnouncement(announcementId: string, input: CreateAnnouncementInput) {
+  if (!process.env.DATABASE_URL || !announcementId) {
+    console.info("Skipped announcement update because DATABASE_URL is not set or identifier is missing.", {
+      announcementId,
+      input,
+    });
+    return;
+  }
+
+  const db = getDb();
+
+  await db.update(announcements).set(input).where(eq(announcements.id, announcementId));
+}
+
+export async function updateAnnouncementPublication(announcementId: string, published: boolean) {
+  if (!process.env.DATABASE_URL || !announcementId) {
+    return;
+  }
+
+  const db = getDb();
+
+  await db.update(announcements).set({ published }).where(eq(announcements.id, announcementId));
+}
+
+export async function deleteAnnouncement(announcementId: string) {
+  if (!process.env.DATABASE_URL || !announcementId) {
+    return;
+  }
+
+  const db = getDb();
+
+  await db.delete(announcements).where(eq(announcements.id, announcementId));
 }
 
 export function getDateValue(formData: FormData, name: string) {
