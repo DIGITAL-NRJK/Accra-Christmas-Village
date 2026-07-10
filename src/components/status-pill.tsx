@@ -22,6 +22,10 @@ const statusCopy: Record<string, string> = {
   reserved: "Reserved",
   available: "Available",
   maintenance: "Maintenance",
+  draft: "Draft",
+  expired: "Expired",
+  live: "Live",
+  scheduled: "Scheduled",
 };
 
 const statusClasses: Record<string, string> = {
@@ -42,18 +46,22 @@ const statusClasses: Record<string, string> = {
   reserved: "border-amber-300 bg-amber-50 text-amber-800",
   available: "border-sky-300 bg-sky-50 text-sky-800",
   maintenance: "border-rose-300 bg-rose-50 text-rose-800",
+  draft: "border-slate-300 bg-slate-50 text-slate-700",
+  expired: "border-rose-300 bg-rose-50 text-rose-800",
+  live: "border-emerald-300 bg-emerald-50 text-emerald-800",
+  scheduled: "border-sky-300 bg-sky-50 text-sky-800",
 };
 
 function StatusIcon({ status }: { status: string }) {
-  if (status === "approved" || status === "compliant" || status === "active" || status === "assigned") {
+  if (status === "approved" || status === "compliant" || status === "active" || status === "assigned" || status === "live") {
     return <CheckCircle2 aria-hidden="true" className="size-3.5" />;
   }
 
-  if (status === "rejected" || status === "blocked" || status === "maintenance" || status === "cancelled") {
+  if (status === "rejected" || status === "blocked" || status === "maintenance" || status === "cancelled" || status === "expired") {
     return <XCircle aria-hidden="true" className="size-3.5" />;
   }
 
-  if (status === "submitted" || status === "in_progress" || status === "confirmed" || status === "reserved" || status === "pending") {
+  if (status === "submitted" || status === "in_progress" || status === "confirmed" || status === "reserved" || status === "pending" || status === "scheduled") {
     return <Clock3 aria-hidden="true" className="size-3.5" />;
   }
 
