@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   Check,
+  ChevronRight,
   Download,
   Eye,
   FileQuestion,
@@ -112,6 +113,22 @@ function reviewForms(documentId: string) {
   );
 }
 
+function participantHref(participantId: string, filters: { status: string; type: string }) {
+  const query = new URLSearchParams();
+
+  query.set("participant", participantId);
+
+  if (filters.type !== "all") {
+    query.set("type", filters.type);
+  }
+
+  if (filters.status !== "all") {
+    query.set("status", filters.status);
+  }
+
+  return `/admin/documents?${query.toString()}`;
+}
+
 export default async function AdminDocumentsPage({ searchParams }: AdminDocumentsPageProps) {
   const { documentRequirements, documents, organizations } = await listAdminData();
   const params = await searchParams;
@@ -120,7 +137,6 @@ export default async function AdminDocumentsPage({ searchParams }: AdminDocument
   const statusFilter = getDocumentStatus(getFilterValue(params.status));
   const participants = organizations.filter(isParticipantOrganization);
   const participantCards = participants
-    .filter((organization) => participantFilter === "all" || organization.id === participantFilter)
     .map((organization) => {
       const allRows = documentRequirements
         .filter((requirement) => requirement.organizationType === organization.type)
@@ -152,34 +168,45 @@ export default async function AdminDocumentsPage({ searchParams }: AdminDocument
 
       return {
         approvedRequired,
+        allRows,
         complianceStatus: getComplianceStatus(allRows),
         filteredRows,
         organization,
         requiredTotal,
       };
-    })
+    });
+  const visibleParticipantCards = participantCards
+    .filter((card) => participantFilter === "all" || card.organization.id === participantFilter)
     .filter((card) => card.filteredRows.length > 0);
+  const selectedCard =
+    visibleParticipantCards.find((card) => card.organization.id === participantFilter) ??
+    visibleParticipantCards[0];
   const submittedDocuments = documents.filter((document) => document.status === "submitted").length;
   const approvedDocuments = documents.filter((document) => document.status === "approved").length;
   const blockedParticipants = participantCards.filter((card) => card.complianceStatus === "blocked").length;
   const missingRequired = participantCards.reduce(
     (total, card) =>
-      total + card.filteredRows.filter((row) => row.required && row.status === "missing").length,
+      total + card.allRows.filter((row) => row.required && row.status === "missing").length,
     0,
   );
+  const activeFilters = {
+    status: statusFilter,
+    type: typeFilter,
+  };
 
   return (
     <>
       <PageHeader
         eyebrow="Admin"
         title="Document and compliance review"
-        description="Review every required participant document, track missing files and approve or reject submissions from one place."
+        description="Select a participant, review received and missing documents, then open, download, approve or reject files from one panel."
       />
       <AdminNav activeHref="/admin/documents" />
+
       <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 pb-6 sm:px-6 lg:grid-cols-4 lg:px-8">
         <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <p className="font-mono text-xs font-bold uppercase text-acv-clay">Participants</p>
-          <p className="mt-2 text-sm font-semibold text-acv-ink">{participantCards.length} visible</p>
+          <p className="mt-2 text-sm font-semibold text-acv-ink">{visibleParticipantCards.length} visible</p>
         </article>
         <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <p className="font-mono text-xs font-bold uppercase text-acv-clay">Submitted</p>
@@ -248,103 +275,155 @@ export default async function AdminDocumentsPage({ searchParams }: AdminDocument
         </form>
       </section>
 
-      <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 pb-10 sm:px-6 lg:px-8">
-        {participantCards.map((card) => (
-          <article
-            className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
-            id={`participant-${card.organization.id}`}
-            key={card.organization.id}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 p-5">
-              <div>
-                <p className="font-mono text-xs font-bold uppercase text-acv-clay">{card.organization.type}</p>
-                <h2 className="mt-1 text-2xl font-semibold text-acv-ink">{card.organization.name}</h2>
-                <p className="mt-1 text-sm text-slate-600">
-                  {card.organization.contactEmail} / {card.organization.contactPhone || "No phone"}
+      <section className="mx-auto grid w-full max-w-6xl gap-6 px-4 pb-10 sm:px-6 lg:grid-cols-[0.86fr_1.14fr] lg:px-8">
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 p-4">
+            <p className="font-mono text-xs font-bold uppercase text-acv-clay">Participant list</p>
+            <h2 className="mt-1 text-lg font-semibold text-acv-ink">Select a document set</h2>
+          </div>
+          <div className="grid lg:max-h-[calc(100vh-15rem)] lg:overflow-y-auto">
+            {visibleParticipantCards.map((card) => {
+              const active = selectedCard?.organization.id === card.organization.id;
+
+              return (
+                <Link
+                  className={`grid gap-3 border-b border-slate-100 p-4 transition last:border-b-0 hover:bg-acv-paper ${
+                    active ? "bg-acv-paper ring-1 ring-inset ring-acv-gold" : "bg-white"
+                  }`}
+                  href={participantHref(card.organization.id, activeFilters)}
+                  id={`participant-${card.organization.id}`}
+                  key={card.organization.id}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-mono text-xs font-bold uppercase text-acv-clay">{card.organization.type}</p>
+                      <h3 className="mt-1 font-semibold text-acv-ink">{card.organization.name}</h3>
+                      <p className="mt-1 text-xs font-medium text-slate-500">{card.organization.contactEmail}</p>
+                    </div>
+                    <ChevronRight aria-hidden="true" className="mt-1 size-4 shrink-0 text-slate-400" />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
+                      {card.approvedRequired}/{card.requiredTotal} approved
+                    </span>
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
+                      {card.filteredRows.length} visible
+                    </span>
+                  </div>
+                  <StatusPill status={card.complianceStatus} />
+                </Link>
+              );
+            })}
+
+            {visibleParticipantCards.length === 0 ? (
+              <div className="p-5">
+                <h2 className="text-xl font-semibold text-acv-ink">No matching documents</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Adjust the participant, document type or status filters to review more records.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-acv-paper px-3 py-1 text-xs font-bold text-acv-ink">
-                  {card.approvedRequired}/{card.requiredTotal} required approved
-                </span>
-                <StatusPill status={card.complianceStatus} />
+            ) : null}
+          </div>
+        </div>
+
+        <article className="h-fit overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm lg:sticky lg:top-28">
+          {selectedCard ? (
+            <>
+              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 p-5">
+                <div>
+                  <p className="font-mono text-xs font-bold uppercase text-acv-clay">{selectedCard.organization.type}</p>
+                  <h2 className="mt-1 text-2xl font-semibold text-acv-ink">{selectedCard.organization.name}</h2>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {selectedCard.organization.contactEmail} / {selectedCard.organization.contactPhone || "No phone"}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-acv-paper px-3 py-1 text-xs font-bold text-acv-ink">
+                    {selectedCard.approvedRequired}/{selectedCard.requiredTotal} required approved
+                  </span>
+                  <StatusPill status={selectedCard.complianceStatus} />
+                </div>
               </div>
-            </div>
 
-            <div className="grid gap-3 p-5">
-              {card.filteredRows.map((row) => {
-                const document = row.document;
-                const canOpenFile = Boolean(document?.storageKey);
+              <div className="grid gap-3 p-5">
+                {selectedCard.filteredRows.map((row) => {
+                  const document = row.document;
+                  const canOpenFile = Boolean(document?.storageKey);
 
-                return (
-                  <div
-                    className="grid gap-3 rounded-lg border border-slate-200 bg-acv-porcelain p-4 lg:grid-cols-[minmax(0,1fr)_auto]"
-                    key={`${card.organization.id}-${row.requirementId}`}
-                  >
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-semibold text-acv-ink">{row.name}</h3>
-                        <StatusPill status={row.status} />
-                        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-600">
-                          {row.required ? "Required" : "Optional"}
-                        </span>
+                  return (
+                    <div
+                      className="grid gap-3 rounded-lg border border-slate-200 bg-acv-porcelain p-4"
+                      key={`${selectedCard.organization.id}-${row.requirementId}`}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-semibold text-acv-ink">{row.name}</h3>
+                          <StatusPill status={row.status} />
+                          <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-600">
+                            {row.required ? "Required" : "Optional"}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">{row.description}</p>
+                        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                          <FileQuestion aria-hidden="true" className="size-4 text-acv-clay" />
+                          <span className="font-medium text-acv-ink">
+                            {document?.fileName ?? "Missing upload"}
+                          </span>
+                          <span>{formatDocumentDate(document?.submittedAt)}</span>
+                        </div>
+                        {document?.reviewerNote ? (
+                          <p className="mt-3 rounded-md bg-white px-3 py-2 text-sm text-slate-700">
+                            {document.reviewerNote}
+                          </p>
+                        ) : null}
                       </div>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">{row.description}</p>
-                      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-                        <FileQuestion aria-hidden="true" className="size-4 text-acv-clay" />
-                        <span className="font-medium text-acv-ink">
-                          {document?.fileName ?? "Missing upload"}
-                        </span>
-                        <span>{formatDocumentDate(document?.submittedAt)}</span>
+
+                      <div className="flex flex-wrap items-start gap-2">
+                        {canOpenFile && document ? (
+                          <>
+                            <Link
+                              className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-acv-ink transition hover:border-acv-palm hover:text-acv-palm"
+                              href={`/documents/${document.id}/download?disposition=inline`}
+                              target="_blank"
+                            >
+                              <Eye aria-hidden="true" className="size-3.5" />
+                              View
+                            </Link>
+                            <Link
+                              className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-acv-ink transition hover:border-acv-gold"
+                              href={`/documents/${document.id}/download`}
+                            >
+                              <Download aria-hidden="true" className="size-3.5" />
+                              Download
+                            </Link>
+                          </>
+                        ) : document?.fileName ? (
+                          <span className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500">
+                            File metadata only
+                          </span>
+                        ) : null}
+                        {document?.id ? reviewForms(document.id) : null}
                       </div>
-                      {document?.reviewerNote ? (
-                        <p className="mt-3 rounded-md bg-white px-3 py-2 text-sm text-slate-700">
-                          {document.reviewerNote}
-                        </p>
-                      ) : null}
                     </div>
+                  );
+                })}
 
-                    <div className="flex flex-wrap items-start gap-2 lg:justify-end">
-                      {canOpenFile && document ? (
-                        <>
-                          <Link
-                            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-acv-ink transition hover:border-acv-palm hover:text-acv-palm"
-                            href={`/documents/${document.id}/download?disposition=inline`}
-                            target="_blank"
-                          >
-                            <Eye aria-hidden="true" className="size-3.5" />
-                            View
-                          </Link>
-                          <Link
-                            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-acv-ink transition hover:border-acv-gold"
-                            href={`/documents/${document.id}/download`}
-                          >
-                            <Download aria-hidden="true" className="size-3.5" />
-                            Download
-                          </Link>
-                        </>
-                      ) : document?.fileName ? (
-                        <span className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500">
-                          File metadata only
-                        </span>
-                      ) : null}
-                      {document?.id ? reviewForms(document.id) : null}
-                    </div>
-                  </div>
-                );
-              })}
+                {selectedCard.filteredRows.length === 0 ? (
+                  <p className="rounded-lg bg-acv-paper p-4 text-sm leading-6 text-slate-600">
+                    No documents match the current filters for this participant.
+                  </p>
+                ) : null}
+              </div>
+            </>
+          ) : (
+            <div className="p-6">
+              <h2 className="text-xl font-semibold text-acv-ink">Select a participant</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Document status and review actions will appear here after a participant is selected.
+              </p>
             </div>
-          </article>
-        ))}
-
-        {participantCards.length === 0 ? (
-          <article className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-acv-ink">No matching documents</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Adjust the participant, document type or status filters to review more records.
-            </p>
-          </article>
-        ) : null}
+          )}
+        </article>
       </section>
     </>
   );
