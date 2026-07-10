@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarClock, Filter, Megaphone, RotateCcw } from "lucide-react";
+import { CalendarClock, ChevronRight, Filter, Megaphone, Plus, RotateCcw } from "lucide-react";
 import { AdminNav } from "@/components/admin-nav";
 import { AnnouncementControls } from "@/app/admin/announcements/announcement-controls";
 import { AnnouncementForm } from "@/app/admin/announcements/announcement-form";
@@ -14,6 +14,7 @@ export const metadata = {
 
 type AdminAnnouncementsPageProps = {
   searchParams: Promise<{
+    announcement?: string;
     audience?: string;
     priority?: string;
     state?: string;
@@ -103,6 +104,26 @@ function sortForTopbarPreview(first: Announcement, second: Announcement) {
   return 0;
 }
 
+function announcementHref(announcementId: string, filters: { audience: string; priority: string; state: string }) {
+  const query = new URLSearchParams();
+
+  query.set("announcement", announcementId);
+
+  if (filters.audience !== "any") {
+    query.set("audience", filters.audience);
+  }
+
+  if (filters.priority !== "all") {
+    query.set("priority", filters.priority);
+  }
+
+  if (filters.state !== "all") {
+    query.set("state", filters.state);
+  }
+
+  return `/admin/announcements?${query.toString()}`;
+}
+
 export default async function AdminAnnouncementsPage({ searchParams }: AdminAnnouncementsPageProps) {
   const { announcements } = await listAdminData();
   const params = await searchParams;
@@ -122,6 +143,11 @@ export default async function AdminAnnouncementsPage({ searchParams }: AdminAnno
     stateFilters.map((filter) => filter.value),
     "all",
   );
+  const activeFilters = {
+    audience: audienceFilter,
+    priority: priorityFilter,
+    state: stateFilter,
+  };
   const announcementsWithState = announcements.map((announcement) => ({
     announcement,
     state: getPublicationState(announcement, now),
@@ -133,6 +159,9 @@ export default async function AdminAnnouncementsPage({ searchParams }: AdminAnno
 
     return audienceMatches && priorityMatches && stateMatches;
   });
+  const selectedAnnouncement =
+    filteredAnnouncements.find(({ announcement }) => announcement.id === params.announcement) ??
+    filteredAnnouncements[0];
   const liveCount = announcementsWithState.filter((item) => item.state === "live").length;
   const scheduledCount = announcementsWithState.filter((item) => item.state === "scheduled").length;
   const draftCount = announcementsWithState.filter((item) => item.state === "draft").length;
@@ -145,7 +174,7 @@ export default async function AdminAnnouncementsPage({ searchParams }: AdminAnno
       <PageHeader
         eyebrow="Admin"
         title="Announcement publishing"
-        description="Create, schedule and control the topbar notices shown across the public site and participant portal."
+        description="Manage notices from a compact list, preview the topbar rotation and edit one announcement at a time."
       />
       <AdminNav activeHref="/admin/announcements" />
 
@@ -246,69 +275,120 @@ export default async function AdminAnnouncementsPage({ searchParams }: AdminAnno
         </form>
       </section>
 
-      <section className="mx-auto grid w-full max-w-6xl gap-6 px-4 pb-10 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
-        <article className="h-fit rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="font-mono text-xs font-bold uppercase text-acv-clay">New message</p>
-          <h2 className="mt-2 text-xl font-semibold text-acv-ink">Create announcement</h2>
-          <div className="mt-4">
-            <AnnouncementForm mode="create" />
+      <section className="mx-auto grid w-full max-w-6xl gap-6 px-4 pb-10 sm:px-6 lg:grid-cols-[0.86fr_1.14fr] lg:px-8">
+        <div className="grid h-fit gap-4">
+          <details
+            className="rounded-lg border border-slate-200 bg-white shadow-sm"
+            open={announcements.length === 0}
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 text-sm font-bold text-acv-ink transition hover:text-acv-palm">
+              <span className="inline-flex items-center gap-2">
+                <Plus aria-hidden="true" className="size-4 text-acv-clay" />
+                Create announcement
+              </span>
+              <span className="rounded-full bg-acv-paper px-2 py-1 text-xs text-slate-600">New</span>
+            </summary>
+            <div className="border-t border-slate-200 p-4">
+              <AnnouncementForm mode="create" />
+            </div>
+          </details>
+
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+            <div className="border-b border-slate-200 p-4">
+              <p className="font-mono text-xs font-bold uppercase text-acv-clay">Announcement list</p>
+              <h2 className="mt-1 text-lg font-semibold text-acv-ink">Select a notice</h2>
+            </div>
+            <div className="grid lg:max-h-[calc(100vh-15rem)] lg:overflow-y-auto">
+              {filteredAnnouncements.map(({ announcement, state }) => {
+                const active = selectedAnnouncement?.announcement.id === announcement.id;
+
+                return (
+                  <Link
+                    className={`grid gap-3 border-b border-slate-100 p-4 transition last:border-b-0 hover:bg-acv-paper ${
+                      active ? "bg-acv-paper ring-1 ring-inset ring-acv-gold" : "bg-white"
+                    }`}
+                    href={announcementHref(announcement.id, activeFilters)}
+                    id={announcement.id}
+                    key={announcement.id}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-mono text-xs font-bold uppercase text-acv-clay">
+                          {announcement.audience} / {announcement.priority}
+                        </p>
+                        <h3 className="mt-1 font-semibold text-acv-ink">{announcement.title}</h3>
+                      </div>
+                      <ChevronRight aria-hidden="true" className="mt-1 size-4 shrink-0 text-slate-400" />
+                    </div>
+                    <p className="line-clamp-2 text-sm leading-6 text-slate-600">{announcement.body}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusPill status={state} />
+                      <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600">
+                        {formatDateTime(announcement.startsAt)}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+
+              {filteredAnnouncements.length === 0 ? (
+                <div className="p-5">
+                  <h2 className="text-xl font-semibold text-acv-ink">No matching announcements</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Change filters or create a new announcement for this audience.
+                  </p>
+                </div>
+              ) : null}
+            </div>
           </div>
-        </article>
+        </div>
 
-        <div className="grid gap-4">
-          {filteredAnnouncements.length === 0 ? (
-            <article className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-xl font-semibold text-acv-ink">No matching announcements</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Change filters or create a new announcement for this audience.
-              </p>
-            </article>
-          ) : null}
-
-          {filteredAnnouncements.map(({ announcement, state }) => (
-            <article
-              className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
-              id={announcement.id}
-              key={announcement.id}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-4">
+        <article className="h-fit overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm lg:sticky lg:top-28">
+          {selectedAnnouncement ? (
+            <>
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 p-5">
                 <div>
                   <p className="font-mono text-xs font-bold uppercase text-acv-clay">
-                    {announcement.audience} / {announcement.priority}
+                    {selectedAnnouncement.announcement.audience} / {selectedAnnouncement.announcement.priority}
                   </p>
-                  <h2 className="mt-2 text-xl font-semibold text-acv-ink">{announcement.title}</h2>
+                  <h2 className="mt-1 text-2xl font-semibold text-acv-ink">
+                    {selectedAnnouncement.announcement.title}
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    {selectedAnnouncement.announcement.body}
+                  </p>
                 </div>
-                <StatusPill status={state} />
+                <StatusPill status={selectedAnnouncement.state} />
               </div>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{announcement.body}</p>
-              <div className="mt-4 grid gap-2 rounded-lg bg-acv-paper p-3 text-xs font-semibold text-slate-600 sm:grid-cols-2">
-                <span className="inline-flex items-center gap-2">
-                  <CalendarClock aria-hidden="true" className="size-4 text-acv-clay" />
-                  Starts {formatDateTime(announcement.startsAt)}
-                </span>
-                <span className="inline-flex items-center gap-2">
-                  <CalendarClock aria-hidden="true" className="size-4 text-acv-clay" />
-                  Ends {formatDateTime(announcement.endsAt)}
-                </span>
-              </div>
-              <details className="mt-4 rounded-lg border border-slate-200 bg-white">
-                <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-acv-ink transition hover:text-acv-palm">
-                  Edit announcement
-                </summary>
-                <div className="border-t border-slate-200 p-4">
-                  <AnnouncementForm announcement={announcement} mode="update" />
+
+              <div className="grid gap-4 p-5">
+                <div className="grid gap-2 rounded-lg bg-acv-paper p-3 text-xs font-semibold text-slate-600 sm:grid-cols-2">
+                  <span className="inline-flex items-center gap-2">
+                    <CalendarClock aria-hidden="true" className="size-4 text-acv-clay" />
+                    Starts {formatDateTime(selectedAnnouncement.announcement.startsAt)}
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    <CalendarClock aria-hidden="true" className="size-4 text-acv-clay" />
+                    Ends {formatDateTime(selectedAnnouncement.announcement.endsAt)}
+                  </span>
                 </div>
-              </details>
-              <div className="mt-4">
+                <AnnouncementForm announcement={selectedAnnouncement.announcement} mode="update" />
                 <AnnouncementControls
-                  announcementId={announcement.id}
-                  published={announcement.published}
-                  title={announcement.title}
+                  announcementId={selectedAnnouncement.announcement.id}
+                  published={selectedAnnouncement.announcement.published}
+                  title={selectedAnnouncement.announcement.title}
                 />
               </div>
-            </article>
-          ))}
-        </div>
+            </>
+          ) : (
+            <div className="p-6">
+              <h2 className="text-xl font-semibold text-acv-ink">Select an announcement</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Editing controls will appear here after a notice is selected.
+              </p>
+            </div>
+          )}
+        </article>
       </section>
     </>
   );
