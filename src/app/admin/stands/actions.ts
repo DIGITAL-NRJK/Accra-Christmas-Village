@@ -2,10 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { assignStand } from "@/db/queries";
-import { requireAnyRole } from "@/lib/auth";
+import { requireAdminSection } from "@/lib/admin-rbac";
 
 export async function assignStandAction(formData: FormData) {
-  await requireAnyRole(["admin", "super_admin"]);
+  await requireAdminSection("stands");
 
   const standId = String(formData.get("standId") ?? "");
   const participantType = String(formData.get("participantType") ?? "none") as "vendor" | "sponsor" | "none";

@@ -10,6 +10,7 @@ import {
   defaultMaxHeroImageUploadBytes,
   formatHeroImageFileSize,
 } from "@/lib/hero-image-upload";
+import { requireAdminSection } from "@/lib/admin-rbac";
 import { defaultHeroSlides } from "@/lib/hero-slides";
 import type { HeroSlide } from "@/lib/types";
 
@@ -46,6 +47,8 @@ function previewBackground(slide: HeroSlide) {
 }
 
 export default async function AdminHeroPage({ searchParams }: AdminHeroPageProps) {
+  await requireAdminSection("hero");
+
   const params = await searchParams;
   const heroSlides = await listHeroSlides();
   const selectedSlide = heroSlides.find((slide) => slide.id === params.slide) ?? heroSlides[0];

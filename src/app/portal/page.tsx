@@ -18,9 +18,9 @@ import { PortalNav } from "@/components/portal-nav";
 import { ProgressBar } from "@/components/progress-bar";
 import { StatusPill } from "@/components/status-pill";
 import { cancelParticipantAccessRequest, requestParticipantAccess } from "@/app/portal/actions";
-import { getAccessRequestForClerkUser } from "@/db/queries";
-import { getOrganizationById, getParticipantPlacement } from "@/db/queries";
-import { getCurrentAppSession, isParticipantRole } from "@/lib/auth";
+import { getAccessRequestForClerkUser, getParticipantPlacement } from "@/db/queries";
+import { getCurrentAppSession, isAdminRole } from "@/lib/auth";
+import { getPortalContext } from "@/lib/portal-context";
 import {
   documents,
   getDocumentsForOrganization,
@@ -31,7 +31,7 @@ import {
   getZone,
   onboardingTasks,
 } from "@/lib/data";
-import type { ParticipantRole, Role } from "@/lib/types";
+import type { ParticipantRole } from "@/lib/types";
 
 const roleConfig: Record<ParticipantRole, {
   eyebrow: string;
@@ -102,7 +102,7 @@ async function ParticipantAccessRequest() {
     redirect("/sign-in");
   }
 
-  if (session.role === "admin" || session.role === "super_admin") {
+  if (isAdminRole(session.role)) {
     redirect("/admin");
   }
 
@@ -256,32 +256,20 @@ type PortalPageProps = {
 };
 
 export default async function PortalPage({ searchParams }: PortalPageProps) {
-  const session = await getCurrentAppSession();
   const params = await searchParams;
+  const portalContext = await getPortalContext(params);
 
-  if (!session) {
-    redirect("/sign-in");
-  }
-
-  const requestedPreviewRole = params?.previewRole as Role | undefined;
-  const previewRole = requestedPreviewRole && isParticipantRole(requestedPreviewRole)
-    ? requestedPreviewRole
-    : null;
-  const isAdminPreview =
-    (session.role === "admin" || session.role === "super_admin") &&
-    Boolean(previewRole);
-  const previewOrganization = isAdminPreview
-    ? await getOrganizationById(params?.organizationId ?? null)
-    : null;
-  const effectiveRole: Role = isAdminPreview && previewRole ? previewRole : session.role;
-  const effectiveOrganization = previewOrganization ?? session.organization;
-
-  if (!isParticipantRole(effectiveRole) || !effectiveOrganization) {
+  if (!portalContext) {
     return <ParticipantAccessRequest />;
   }
 
+  const {
+    isAdminPreview,
+    organization,
+    previewQuery,
+    role: effectiveRole,
+  } = portalContext;
   const config = roleConfig[effectiveRole];
-  const organization = effectiveOrganization;
   const placement = await getParticipantPlacement(organization.id);
   const vendor = placement.vendor ?? getVendorByOrganization(organization.id);
   const sponsor = placement.sponsor ?? getSponsorByOrganization(organization.id);
@@ -296,8 +284,22 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
     <>
       {isAdminPreview ? (
         <div className="border-b border-acv-gold/30 bg-acv-gold/10">
-          <div className="mx-auto w-full max-w-6xl px-4 py-3 text-sm font-semibold text-acv-ink sm:px-6 lg:px-8">
-            Admin preview: viewing {organization.name} as {effectiveRole}.
+          <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-acv-ink sm:px-6 lg:px-8">
+            <span>Admin preview: viewing {organization.name} as {effectiveRole}.</span>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                className="rounded-md border border-acv-gold/40 bg-white px-3 py-1.5 text-xs font-bold text-acv-ink transition hover:border-acv-palm"
+                href="/admin/preview"
+              >
+                Exit preview
+              </Link>
+              <Link
+                className="rounded-md bg-acv-ink px-3 py-1.5 text-xs font-bold text-white transition hover:bg-acv-palm"
+                href="/admin"
+              >
+                Admin dashboard
+              </Link>
+            </div>
           </div>
         </div>
       ) : null}
@@ -306,7 +308,7 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
         title={`${organization.name} ${config.title}`}
         description={config.description}
       />
-      <PortalNav activeHref="/portal" />
+      <PortalNav activeHref="/portal" previewQuery={previewQuery} />
       <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 pb-10 sm:px-6 lg:grid-cols-4 lg:px-8">
         <MetricCard
           detail="Approved checklist items."
@@ -351,14 +353,14 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
                 </div>
               ))}
           </div>
-          <Link className="mt-5 inline-flex text-sm font-bold text-acv-palm" href={config.actionHref}>
+          <Link className="mt-5 inline-flex text-sm font-bold text-acv-palm" href={`${config.actionHref}${previewQuery}`}>
             {config.actionLabel}
           </Link>
         </aside>
         <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-start gap-3">
             <span className="rounded-lg bg-acv-gold/20 p-2 text-acv-clay">
-              {session.role === "partner" ? (
+              {effectiveRole === "partner" ? (
                 <Building2 aria-hidden="true" className="size-5" />
               ) : (
                 <MapPin aria-hidden="true" className="size-5" />

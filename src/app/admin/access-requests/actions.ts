@@ -2,10 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { approveAccessRequest, rejectAccessRequest } from "@/db/queries";
-import { requireAnyRole } from "@/lib/auth";
+import { requireAdminSection } from "@/lib/admin-rbac";
 
 export async function approveRequest(formData: FormData) {
-  const session = await requireAnyRole(["admin", "super_admin"]);
+  const session = await requireAdminSection("access");
   const requestId = String(formData.get("requestId") ?? "");
   const reviewerNote = String(formData.get("reviewerNote") ?? "Approved by organizer.").trim();
 
@@ -19,7 +19,7 @@ export async function approveRequest(formData: FormData) {
 }
 
 export async function rejectRequest(formData: FormData) {
-  const session = await requireAnyRole(["admin", "super_admin"]);
+  const session = await requireAdminSection("access");
   const requestId = String(formData.get("requestId") ?? "");
   const reviewerNote = String(formData.get("reviewerNote") ?? "Please contact the organizer team.").trim();
 

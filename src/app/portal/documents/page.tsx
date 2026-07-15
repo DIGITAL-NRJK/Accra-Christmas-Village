@@ -4,8 +4,8 @@ import { PortalNav } from "@/components/portal-nav";
 import { StatusPill } from "@/components/status-pill";
 import { UploadDocumentForm } from "@/app/portal/documents/upload-document-form";
 import { listAdminData } from "@/db/queries";
-import { requireAnyRole } from "@/lib/auth";
 import { defaultMaxDocumentUploadBytes } from "@/lib/document-upload";
+import { requirePortalContext, type PortalSearchParams } from "@/lib/portal-context";
 
 export const metadata = {
   title: "Documents",
@@ -19,15 +19,22 @@ function getMaxDocumentUploadBytes() {
     : defaultMaxDocumentUploadBytes;
 }
 
-export default async function DocumentsPage() {
-  const session = await requireAnyRole(["vendor", "sponsor", "partner"]);
-  const organization = session.organization;
+type DocumentsPageProps = {
+  searchParams?: Promise<PortalSearchParams>;
+};
+
+export default async function DocumentsPage({ searchParams }: DocumentsPageProps) {
+  const params = await searchParams;
+  const {
+    isAdminPreview,
+    organization,
+    previewQuery,
+    role,
+  } = await requirePortalContext(params);
   const { documentRequirements, documents: allDocuments } = await listAdminData();
   const maxUploadBytes = getMaxDocumentUploadBytes();
-  const documents = organization
-    ? allDocuments.filter((document) => document.organizationId === organization.id)
-    : [];
-  const requirementType = session.role === "sponsor" ? "sponsor" : session.role === "partner" ? "partner" : "vendor";
+  const documents = allDocuments.filter((document) => document.organizationId === organization.id);
+  const requirementType = role === "sponsor" ? "sponsor" : role === "partner" ? "partner" : "vendor";
   const requirements = documentRequirements.filter(
     (requirement) => requirement.organizationType === requirementType,
   );
@@ -39,7 +46,7 @@ export default async function DocumentsPage() {
         title="Upload and track required documents"
         description="Business registration, food safety, insurance and staff list files move through missing, submitted, approved and rejected statuses."
       />
-      <PortalNav activeHref="/portal/documents" />
+      <PortalNav activeHref="/portal/documents" previewQuery={previewQuery} />
       <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 pb-10 sm:px-6 lg:px-8">
         {requirements.map((requirement) => {
           const document = documents.find((candidate) => candidate.requirementId === requirement.id);
@@ -68,11 +75,17 @@ export default async function DocumentsPage() {
               {document?.reviewerNote ? (
                 <p className="mt-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-800">{document.reviewerNote}</p>
               ) : null}
-              <UploadDocumentForm
-                maxUploadBytes={maxUploadBytes}
-                required={requirement.required}
-                requirementId={requirement.id}
-              />
+              {isAdminPreview ? (
+                <p className="mt-5 rounded-lg bg-acv-paper p-3 text-sm font-semibold text-slate-700">
+                  Preview mode: document upload is disabled for admin accounts.
+                </p>
+              ) : (
+                <UploadDocumentForm
+                  maxUploadBytes={maxUploadBytes}
+                  required={requirement.required}
+                  requirementId={requirement.id}
+                />
+              )}
             </article>
           );
         })}

@@ -8,7 +8,7 @@ import {
   updateAnnouncementPublication,
   type CreateAnnouncementInput,
 } from "@/db/queries";
-import { requireAnyRole } from "@/lib/auth";
+import { requireAdminSection } from "@/lib/admin-rbac";
 
 export type AnnouncementActionState = {
   message: string;
@@ -93,7 +93,7 @@ export async function createAnnouncementAction(
   _previousState: AnnouncementActionState,
   formData: FormData,
 ): Promise<AnnouncementActionState> {
-  await requireAnyRole(["admin", "super_admin"]);
+  await requireAdminSection("announcements");
 
   const input = announcementInput(formData);
 
@@ -114,7 +114,7 @@ export async function updateAnnouncementAction(
   _previousState: AnnouncementActionState,
   formData: FormData,
 ): Promise<AnnouncementActionState> {
-  await requireAnyRole(["admin", "super_admin"]);
+  await requireAdminSection("announcements");
 
   const announcementId = textValue(formData, "announcementId");
   const input = announcementInput(formData);
@@ -137,7 +137,7 @@ export async function updateAnnouncementAction(
 }
 
 export async function updateAnnouncementPublicationAction(formData: FormData) {
-  await requireAnyRole(["admin", "super_admin"]);
+  await requireAdminSection("announcements");
 
   const announcementId = textValue(formData, "announcementId");
   const published = isPublishedValue(formData);
@@ -147,7 +147,7 @@ export async function updateAnnouncementPublicationAction(formData: FormData) {
 }
 
 export async function deleteAnnouncementAction(formData: FormData) {
-  await requireAnyRole(["admin", "super_admin"]);
+  await requireAdminSection("announcements");
 
   const announcementId = textValue(formData, "announcementId");
 

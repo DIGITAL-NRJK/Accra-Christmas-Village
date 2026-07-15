@@ -1,4 +1,5 @@
 import { getDocumentById } from "@/db/queries";
+import { canAccessAdminSection } from "@/lib/admin-rbac";
 import { getCurrentAppSession, isParticipantRole } from "@/lib/auth";
 import { documentStorage } from "@/lib/storage";
 
@@ -29,7 +30,7 @@ export async function GET(
     return new Response("Document not found", { status: 404 });
   }
 
-  const isOrganizer = session.role === "admin" || session.role === "super_admin";
+  const isOrganizer = canAccessAdminSection(session.role, "documents");
   const isOwner = isParticipantRole(session.role) && session.organization?.id === document.organizationId;
 
   if (!isOrganizer && !isOwner) {

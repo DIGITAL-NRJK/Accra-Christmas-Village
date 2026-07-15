@@ -9,6 +9,15 @@ const portalNav = [
   { href: "/portal/messages", label: "Messages" },
 ];
 
-export function PortalNav({ activeHref }: { activeHref: string }) {
-  return <NavTabs activeHref={activeHref} items={portalNav} />;
+export function PortalNav({ activeHref, previewQuery = "" }: { activeHref: string; previewQuery?: string }) {
+  const items = previewQuery
+    ? [
+        ...portalNav.map((item) => ({ ...item, href: `${item.href}${previewQuery}` })),
+        ...(activeHref === "/portal"
+          ? []
+          : [{ href: "/admin/preview", label: "Exit preview" }]),
+      ]
+    : portalNav;
+
+  return <NavTabs activeHref={activeHref} items={items} />;
 }

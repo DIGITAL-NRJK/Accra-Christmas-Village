@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
 import { approveRequest, rejectRequest } from "@/app/admin/access-requests/actions";
 import { listAdminData } from "@/db/queries";
+import { requireAdminSection } from "@/lib/admin-rbac";
 import type { AccessRequestStatus } from "@/lib/types";
 
 export const metadata = {
@@ -94,6 +95,8 @@ function requestActions(requestId: string) {
 }
 
 export default async function AdminAccessRequestsPage({ searchParams }: AdminAccessRequestsPageProps) {
+  await requireAdminSection("access");
+
   const data = await listAdminData();
   const params = await searchParams;
   const activeStatus = getStatusFilter(params.status);

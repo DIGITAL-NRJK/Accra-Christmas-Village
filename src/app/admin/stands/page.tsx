@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
 import { assignStandAction } from "@/app/admin/stands/actions";
 import { listAdminData } from "@/db/queries";
+import { requireAdminSection } from "@/lib/admin-rbac";
 
 export const metadata = {
   title: "Stand Allocation",
@@ -37,6 +38,8 @@ function getOpenFilterValue(value: string | undefined, availableValues: string[]
 }
 
 export default async function AdminStandsPage({ searchParams }: AdminStandsPageProps) {
+  await requireAdminSection("stands");
+
   const { organizations, sponsors, stands, vendors, zones } = await listAdminData();
   const params = await searchParams;
   const assignableOrganizations = organizations.filter((organization) =>

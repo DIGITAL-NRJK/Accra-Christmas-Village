@@ -7,6 +7,7 @@ import { DismissibleAnnouncement } from "@/components/dismissible-announcement";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
 import { listAdminData } from "@/db/queries";
+import { requireAdminSection } from "@/lib/admin-rbac";
 
 export const metadata = {
   title: "Announcements",
@@ -125,6 +126,8 @@ function announcementHref(announcementId: string, filters: { audience: string; p
 }
 
 export default async function AdminAnnouncementsPage({ searchParams }: AdminAnnouncementsPageProps) {
+  await requireAdminSection("announcements");
+
   const { announcements } = await listAdminData();
   const params = await searchParams;
   const now = new Date();

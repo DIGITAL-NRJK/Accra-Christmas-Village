@@ -14,7 +14,7 @@ export function NavTabs({ items, activeHref }: NavTabsProps) {
   return (
     <nav className="mx-auto flex w-full max-w-6xl gap-2 overflow-x-auto px-4 pb-4 sm:px-6 lg:px-8">
       {items.map((item) => {
-        const active = item.href === activeHref;
+        const active = item.href === activeHref || item.href.split("?")[0] === activeHref;
 
         return (
           <Link

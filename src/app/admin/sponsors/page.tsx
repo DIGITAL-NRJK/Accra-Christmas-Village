@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { ChevronRight, MapPin, Plus, Store } from "lucide-react";
+import { ChevronRight, Filter, MapPin, Plus, RotateCcw, Store } from "lucide-react";
 import { AdminNav } from "@/components/admin-nav";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
 import { SponsorControls } from "@/app/admin/sponsors/sponsor-controls";
 import { SponsorForm } from "@/app/admin/sponsors/sponsor-form";
 import { listAdminData } from "@/db/queries";
+import { requireAdminSection } from "@/lib/admin-rbac";
 import type { Sponsor } from "@/lib/types";
 
 export const metadata = {
@@ -14,11 +15,17 @@ export const metadata = {
 
 type AdminSponsorsPageProps = {
   searchParams: Promise<{
+    assignment?: string;
+    packageLevel?: string;
     sponsor?: string;
+    status?: string;
   }>;
 };
 
 const sponsorStatuses: Sponsor["status"][] = ["prospect", "confirmed", "active"];
+const packageFilters: Array<Sponsor["packageLevel"] | "all"> = ["all", "headline", "gold", "silver", "community"];
+const statusFilters: Array<Sponsor["status"] | "all"> = ["all", "prospect", "confirmed", "active"];
+const assignmentFilters = ["all", "assigned", "unassigned"];
 
 function getSponsorStatus(status: string): Sponsor["status"] {
   return sponsorStatuses.includes(status as Sponsor["status"])
@@ -26,14 +33,57 @@ function getSponsorStatus(status: string): Sponsor["status"] {
     : "prospect";
 }
 
-function sponsorHref(sponsorId: string) {
-  return `/admin/sponsors?sponsor=${encodeURIComponent(sponsorId)}`;
+function getFilterValue(value: string | undefined, allowedValues: string[], fallback = "all") {
+  const normalizedValue = value?.trim() || fallback;
+
+  return allowedValues.includes(normalizedValue) ? normalizedValue : fallback;
+}
+
+function sponsorHref(
+  sponsorId: string,
+  filters: {
+    assignment: string;
+    packageLevel: string;
+    status: string;
+  },
+) {
+  const query = new URLSearchParams();
+
+  query.set("sponsor", sponsorId);
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== "all") {
+      query.set(key, value);
+    }
+  });
+
+  return `/admin/sponsors?${query.toString()}`;
 }
 
 export default async function AdminSponsorsPage({ searchParams }: AdminSponsorsPageProps) {
+  await requireAdminSection("sponsors");
+
   const { organizations, sponsors, stands } = await listAdminData();
   const params = await searchParams;
-  const selectedSponsor = sponsors.find((sponsor) => sponsor.id === params.sponsor) ?? sponsors[0];
+  const packageFilter = getFilterValue(params.packageLevel, packageFilters);
+  const statusFilter = getFilterValue(params.status, statusFilters);
+  const assignmentFilter = getFilterValue(params.assignment, assignmentFilters);
+  const activeFilters = {
+    assignment: assignmentFilter,
+    packageLevel: packageFilter,
+    status: statusFilter,
+  };
+  const filteredSponsors = sponsors.filter((sponsor) => {
+    const packageMatches = packageFilter === "all" || sponsor.packageLevel === packageFilter;
+    const statusMatches = statusFilter === "all" || sponsor.status === statusFilter;
+    const assignmentMatches =
+      assignmentFilter === "all" ||
+      (assignmentFilter === "assigned" && Boolean(sponsor.standId)) ||
+      (assignmentFilter === "unassigned" && !sponsor.standId);
+
+    return packageMatches && statusMatches && assignmentMatches;
+  });
+  const selectedSponsor = filteredSponsors.find((sponsor) => sponsor.id === params.sponsor) ?? filteredSponsors[0];
   const normalizedSelectedSponsor = selectedSponsor
     ? { ...selectedSponsor, status: getSponsorStatus(selectedSponsor.status) }
     : null;
@@ -76,6 +126,52 @@ export default async function AdminSponsorsPage({ searchParams }: AdminSponsorsP
         </article>
       </section>
 
+      <section className="mx-auto w-full max-w-6xl px-4 pb-5 sm:px-6 lg:px-8">
+        <form
+          className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[1fr_1fr_1fr_auto_auto]"
+          method="get"
+        >
+          <label className="grid gap-2">
+            <span className="text-xs font-bold uppercase text-slate-500">Package</span>
+            <select className="rounded-md border border-slate-200 px-3 py-2 text-sm" defaultValue={packageFilter} name="packageLevel">
+              <option value="all">All packages</option>
+              <option value="headline">Headline</option>
+              <option value="gold">Gold</option>
+              <option value="silver">Silver</option>
+              <option value="community">Community</option>
+            </select>
+          </label>
+          <label className="grid gap-2">
+            <span className="text-xs font-bold uppercase text-slate-500">Status</span>
+            <select className="rounded-md border border-slate-200 px-3 py-2 text-sm" defaultValue={statusFilter} name="status">
+              <option value="all">All statuses</option>
+              <option value="prospect">Prospect</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="active">Active</option>
+            </select>
+          </label>
+          <label className="grid gap-2">
+            <span className="text-xs font-bold uppercase text-slate-500">Stand</span>
+            <select className="rounded-md border border-slate-200 px-3 py-2 text-sm" defaultValue={assignmentFilter} name="assignment">
+              <option value="all">All</option>
+              <option value="assigned">Assigned</option>
+              <option value="unassigned">Unassigned</option>
+            </select>
+          </label>
+          <button className="inline-flex items-center justify-center gap-2 rounded-md bg-acv-ink px-4 py-2 text-sm font-bold text-white transition hover:bg-acv-palm">
+            <Filter aria-hidden="true" className="size-4" />
+            Filter
+          </button>
+          <Link
+            className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 px-4 py-2 text-sm font-bold text-acv-ink transition hover:border-acv-gold"
+            href="/admin/sponsors"
+          >
+            <RotateCcw aria-hidden="true" className="size-4" />
+            Reset
+          </Link>
+        </form>
+      </section>
+
       <section className="mx-auto grid w-full max-w-6xl gap-6 px-4 pb-10 sm:px-6 lg:grid-cols-[0.86fr_1.14fr] lg:px-8">
         <div className="grid h-fit gap-4">
           <details
@@ -100,7 +196,7 @@ export default async function AdminSponsorsPage({ searchParams }: AdminSponsorsP
               <h2 className="mt-1 text-lg font-semibold text-acv-ink">Select a profile</h2>
             </div>
             <div className="grid lg:max-h-[calc(100vh-15rem)] lg:overflow-y-auto">
-              {sponsors.map((sponsor) => {
+              {filteredSponsors.map((sponsor) => {
                 const organization = organizations.find((candidate) => candidate.id === sponsor.organizationId);
                 const stand = stands.find((candidate) => candidate.id === sponsor.standId);
                 const active = selectedSponsor?.id === sponsor.id;
@@ -110,7 +206,7 @@ export default async function AdminSponsorsPage({ searchParams }: AdminSponsorsP
                     className={`grid gap-3 border-b border-slate-100 p-4 transition last:border-b-0 hover:bg-acv-paper ${
                       active ? "bg-acv-paper ring-1 ring-inset ring-acv-gold" : "bg-white"
                     }`}
-                    href={sponsorHref(sponsor.id)}
+                    href={sponsorHref(sponsor.id, activeFilters)}
                     id={sponsor.id}
                     key={sponsor.id}
                   >
@@ -133,11 +229,11 @@ export default async function AdminSponsorsPage({ searchParams }: AdminSponsorsP
                   </Link>
                 );
               })}
-              {sponsors.length === 0 ? (
+              {filteredSponsors.length === 0 ? (
                 <div className="p-5">
-                  <h2 className="text-xl font-semibold text-acv-ink">No sponsor records yet</h2>
+                  <h2 className="text-xl font-semibold text-acv-ink">No matching sponsors</h2>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
-                    Create a sponsor profile here or approve sponsor requests from Access.
+                    Reset filters or broaden criteria to view more sponsor records.
                   </p>
                 </div>
               ) : null}

@@ -2,12 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { reviewDocument as persistDocumentReview } from "@/db/queries";
-import { requireAnyRole } from "@/lib/auth";
+import { requireAdminSection } from "@/lib/admin-rbac";
 
 export async function approveDocument(formData: FormData) {
   const documentId = String(formData.get("documentId") ?? "");
   const reviewerNote = String(formData.get("reviewerNote") ?? "Approved for event operations.");
-  const session = await requireAnyRole(["admin", "super_admin"]);
+  const session = await requireAdminSection("documents");
 
   if (!documentId || !session.user) {
     return;
@@ -21,7 +21,7 @@ export async function approveDocument(formData: FormData) {
 export async function rejectDocument(formData: FormData) {
   const documentId = String(formData.get("documentId") ?? "");
   const reviewerNote = String(formData.get("reviewerNote") ?? "");
-  const session = await requireAnyRole(["admin", "super_admin"]);
+  const session = await requireAdminSection("documents");
 
   if (!documentId || !session.user) {
     return;

@@ -8,7 +8,7 @@ import {
   updateSponsorStatus,
   type SaveSponsorInput,
 } from "@/db/queries";
-import { requireAnyRole } from "@/lib/auth";
+import { requireAdminSection } from "@/lib/admin-rbac";
 import type { Sponsor } from "@/lib/types";
 
 export type SponsorActionState = {
@@ -79,7 +79,7 @@ export async function createSponsorAction(
   _previousState: SponsorActionState,
   formData: FormData,
 ): Promise<SponsorActionState> {
-  await requireAnyRole(["admin", "super_admin"]);
+  await requireAdminSection("sponsors");
 
   const input = getSponsorInput(formData);
 
@@ -100,7 +100,7 @@ export async function updateSponsorAction(
   _previousState: SponsorActionState,
   formData: FormData,
 ): Promise<SponsorActionState> {
-  await requireAnyRole(["admin", "super_admin"]);
+  await requireAdminSection("sponsors");
 
   const sponsorId = textValue(formData, "sponsorId");
   const organizationId = textValue(formData, "organizationId");
@@ -124,7 +124,7 @@ export async function updateSponsorAction(
 }
 
 export async function updateSponsorStatusAction(formData: FormData) {
-  await requireAnyRole(["admin", "super_admin"]);
+  await requireAdminSection("sponsors");
 
   const sponsorId = textValue(formData, "sponsorId");
   const status = textValue(formData, "status") as Sponsor["status"];
@@ -138,7 +138,7 @@ export async function updateSponsorStatusAction(formData: FormData) {
 }
 
 export async function deleteSponsorAction(formData: FormData) {
-  await requireAnyRole(["admin", "super_admin"]);
+  await requireAdminSection("sponsors");
 
   const sponsorId = textValue(formData, "sponsorId");
 
