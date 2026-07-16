@@ -29,6 +29,7 @@ const statusCopy: Record<string, string> = {
   open: "Open",
   monitoring: "Monitoring",
   resolved: "Resolved",
+  expiring_soon: "Expiring soon",
 };
 
 const statusClasses: Record<string, string> = {
@@ -56,6 +57,7 @@ const statusClasses: Record<string, string> = {
   open: "border-rose-300 bg-rose-50 text-rose-800",
   monitoring: "border-amber-300 bg-amber-50 text-amber-800",
   resolved: "border-emerald-300 bg-emerald-50 text-emerald-800",
+  expiring_soon: "border-orange-300 bg-orange-50 text-orange-800",
 };
 
 function StatusIcon({ status }: { status: string }) {
@@ -67,7 +69,7 @@ function StatusIcon({ status }: { status: string }) {
     return <XCircle aria-hidden="true" className="size-3.5" />;
   }
 
-  if (status === "submitted" || status === "in_progress" || status === "confirmed" || status === "reserved" || status === "pending" || status === "scheduled" || status === "monitoring") {
+  if (status === "submitted" || status === "in_progress" || status === "confirmed" || status === "reserved" || status === "pending" || status === "scheduled" || status === "monitoring" || status === "expiring_soon") {
     return <Clock3 aria-hidden="true" className="size-3.5" />;
   }
 

@@ -136,6 +136,7 @@ export type DocumentRecord = {
   submittedAt: string | null;
   reviewedAt: string | null;
   reviewerNote: string | null;
+  expiresAt?: string | null;
 };
 
 export type OnboardingTask = {

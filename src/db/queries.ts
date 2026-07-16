@@ -136,6 +136,7 @@ export async function reviewDocument(
   status: Extract<DocumentStatus, "approved" | "rejected">,
   reviewerUserId: string,
   reviewerNote: string,
+  expiresAt: Date | null = null,
 ) {
   if (!process.env.DATABASE_URL) {
     console.info("Skipped Neon document review because DATABASE_URL is not set.", {
@@ -143,6 +144,7 @@ export async function reviewDocument(
       status,
       reviewerUserId,
       reviewerNote,
+      expiresAt,
     });
     return;
   }
@@ -157,6 +159,7 @@ export async function reviewDocument(
       rejectionReason: status === "rejected" ? reviewerNote : null,
       reviewedAt: new Date(),
       reviewedByUserId: reviewerUserId,
+      expiresAt: status === "approved" ? expiresAt : null,
     })
     .where(eq(documents.id, documentId));
 }

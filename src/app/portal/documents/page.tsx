@@ -50,6 +50,12 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
       <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 pb-10 sm:px-6 lg:px-8">
         {requirements.map((requirement) => {
           const document = documents.find((candidate) => candidate.requirementId === requirement.id);
+          const expiresAt = document?.expiresAt ? new Date(document.expiresAt) : null;
+          const now = new Date();
+          const expiringSoon = expiresAt
+            ? expiresAt >= now && expiresAt.getTime() - now.getTime() <= 30 * 24 * 60 * 60 * 1000
+            : false;
+          const expired = expiresAt ? expiresAt < now : false;
 
           return (
             <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm" key={requirement.id}>
@@ -71,7 +77,15 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
                   </div>
                 </div>
                 <StatusPill status={document?.status ?? "missing"} />
+                {expired ? <StatusPill status="expired" /> : null}
+                {expiringSoon ? <StatusPill status="expiring_soon" /> : null}
               </div>
+              {expiresAt ? (
+                <p className={`mt-4 rounded-lg p-3 text-sm font-semibold ${expired ? "bg-rose-50 text-rose-800" : expiringSoon ? "bg-orange-50 text-orange-800" : "bg-emerald-50 text-emerald-800"}`}>
+                  {expired ? "This document expired on " : expiringSoon ? "This document expires soon: " : "Valid until "}
+                  {new Intl.DateTimeFormat("en", { dateStyle: "long" }).format(expiresAt)}
+                </p>
+              ) : null}
               {document?.reviewerNote ? (
                 <p className="mt-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-800">{document.reviewerNote}</p>
               ) : null}

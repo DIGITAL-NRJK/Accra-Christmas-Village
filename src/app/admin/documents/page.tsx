@@ -26,6 +26,7 @@ type AdminDocumentsPageProps = {
     participant?: string;
     status?: string;
     type?: string;
+    validity?: string;
   }>;
 };
 
@@ -51,14 +52,14 @@ function getDocumentStatus(value: string): DocumentStatus | "all" {
     : "all";
 }
 
-function getComplianceStatus(rows: Array<{ required: boolean; status: DocumentStatus }>) {
+function getComplianceStatus(rows: Array<{ required: boolean; status: DocumentStatus; validity: string }>) {
   const requiredRows = rows.filter((row) => row.required);
 
   if (requiredRows.length === 0) {
     return "not_started";
   }
 
-  if (requiredRows.some((row) => row.status === "rejected")) {
+  if (requiredRows.some((row) => row.status === "rejected" || row.validity === "expired")) {
     return "blocked";
   }
 
@@ -91,6 +92,10 @@ function reviewForms(documentId: string) {
       <form action={approveDocument}>
         <input name="documentId" type="hidden" value={documentId} />
         <input name="reviewerNote" type="hidden" value="Approved for event operations." />
+        <label className="grid gap-1 text-xs font-bold text-slate-600">
+          Valid until
+          <input className="rounded-md border border-slate-200 bg-white px-2 py-1.5" name="expiresAt" type="date" />
+        </label>
         <button
           className="inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-2 text-xs font-bold text-white transition hover:bg-emerald-800"
           title="Approve document"
@@ -138,6 +143,11 @@ export default async function AdminDocumentsPage({ searchParams }: AdminDocument
   const participantFilter = getFilterValue(params.participant);
   const typeFilter = getFilterValue(params.type);
   const statusFilter = getDocumentStatus(getFilterValue(params.status));
+  const validityFilter = ["all", "valid", "expiring", "expired"].includes(params.validity ?? "")
+    ? params.validity!
+    : "all";
+  const now = new Date();
+  const warningDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const participants = organizations.filter(isParticipantOrganization);
   const participantCards = participants
     .map((organization) => {
@@ -150,6 +160,15 @@ export default async function AdminDocumentsPage({ searchParams }: AdminDocument
               candidate.requirementId === requirement.id,
           );
           const status = (document?.status ?? "missing") as DocumentStatus;
+          const expiresAt = document?.expiresAt ? new Date(document.expiresAt) : null;
+          const validity =
+            !expiresAt || status !== "approved"
+              ? "none"
+              : expiresAt < now
+                ? "expired"
+                : expiresAt <= warningDate
+                  ? "expiring"
+                  : "valid";
 
           return {
             description: requirement.description,
@@ -158,13 +177,15 @@ export default async function AdminDocumentsPage({ searchParams }: AdminDocument
             requirementId: requirement.id,
             required: requirement.required,
             status,
+            validity,
           };
         });
       const filteredRows = allRows.filter((row) => {
         const typeMatches = typeFilter === "all" || row.requirementId === typeFilter;
         const statusMatches = statusFilter === "all" || row.status === statusFilter;
+        const validityMatches = validityFilter === "all" || row.validity === validityFilter;
 
-        return typeMatches && statusMatches;
+        return typeMatches && statusMatches && validityMatches;
       });
       const approvedRequired = allRows.filter((row) => row.required && row.status === "approved").length;
       const requiredTotal = allRows.filter((row) => row.required).length;
@@ -185,7 +206,16 @@ export default async function AdminDocumentsPage({ searchParams }: AdminDocument
     visibleParticipantCards.find((card) => card.organization.id === participantFilter) ??
     visibleParticipantCards[0];
   const submittedDocuments = documents.filter((document) => document.status === "submitted").length;
-  const approvedDocuments = documents.filter((document) => document.status === "approved").length;
+  const expiredDocuments = documents.filter(
+    (document) => document.status === "approved" && document.expiresAt && new Date(document.expiresAt) < now,
+  ).length;
+  const expiringDocuments = documents.filter(
+    (document) =>
+      document.status === "approved" &&
+      document.expiresAt &&
+      new Date(document.expiresAt) >= now &&
+      new Date(document.expiresAt) <= warningDate,
+  ).length;
   const blockedParticipants = participantCards.filter((card) => card.complianceStatus === "blocked").length;
   const missingRequired = participantCards.reduce(
     (total, card) =>
@@ -216,8 +246,8 @@ export default async function AdminDocumentsPage({ searchParams }: AdminDocument
           <p className="mt-2 text-sm font-semibold text-acv-ink">{submittedDocuments} awaiting review</p>
         </article>
         <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="font-mono text-xs font-bold uppercase text-acv-clay">Approved</p>
-          <p className="mt-2 text-sm font-semibold text-acv-ink">{approvedDocuments} cleared files</p>
+          <p className="font-mono text-xs font-bold uppercase text-acv-clay">Validity alerts</p>
+          <p className="mt-2 text-sm font-semibold text-acv-ink">{expiringDocuments} soon / {expiredDocuments} expired</p>
         </article>
         <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <p className="font-mono text-xs font-bold uppercase text-acv-clay">Risk</p>
@@ -229,7 +259,7 @@ export default async function AdminDocumentsPage({ searchParams }: AdminDocument
 
       <section className="mx-auto w-full max-w-6xl px-4 pb-5 sm:px-6 lg:px-8">
         <form
-          className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[1fr_1fr_0.8fr_auto_auto]"
+          className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[1fr_1fr_0.8fr_0.8fr_auto_auto]"
           method="get"
         >
           <label className="grid gap-2">
@@ -241,6 +271,15 @@ export default async function AdminDocumentsPage({ searchParams }: AdminDocument
                   {organization.name} ({organization.type})
                 </option>
               ))}
+            </select>
+          </label>
+          <label className="grid gap-2">
+            <span className="text-xs font-bold uppercase text-slate-500">Validity</span>
+            <select className="rounded-md border border-slate-200 px-3 py-2 text-sm" defaultValue={validityFilter} name="validity">
+              <option value="all">All validity states</option>
+              <option value="valid">Valid</option>
+              <option value="expiring">Expiring in 30 days</option>
+              <option value="expired">Expired</option>
             </select>
           </label>
           <label className="grid gap-2">
@@ -362,6 +401,8 @@ export default async function AdminDocumentsPage({ searchParams }: AdminDocument
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="font-semibold text-acv-ink">{row.name}</h3>
                           <StatusPill status={row.status} />
+                          {row.validity === "expired" ? <StatusPill status="expired" /> : null}
+                          {row.validity === "expiring" ? <StatusPill status="expiring_soon" /> : null}
                           <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-600">
                             {row.required ? "Required" : "Optional"}
                           </span>
@@ -373,6 +414,7 @@ export default async function AdminDocumentsPage({ searchParams }: AdminDocument
                             {document?.fileName ?? "Missing upload"}
                           </span>
                           <span>{formatDocumentDate(document?.submittedAt)}</span>
+                          {document?.expiresAt ? <span>Valid until {formatDocumentDate(document.expiresAt)}</span> : null}
                         </div>
                         {document?.reviewerNote ? (
                           <p className="mt-3 rounded-md bg-white px-3 py-2 text-sm text-slate-700">
