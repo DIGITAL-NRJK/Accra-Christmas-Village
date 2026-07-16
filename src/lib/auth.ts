@@ -39,6 +39,17 @@ export function isParticipantRole(role: Role): role is ParticipantRole {
   return role === "vendor" || role === "sponsor" || role === "partner";
 }
 
+export function isAdminRole(role: Role) {
+  return (
+    role === "admin" ||
+    role === "super_admin" ||
+    role === "operations_manager" ||
+    role === "content_manager" ||
+    role === "compliance_manager" ||
+    role === "stand_manager"
+  );
+}
+
 async function getSessionOrganization(organizationId: string | null | undefined): Promise<Organization | undefined> {
   if (!organizationId) {
     return undefined;

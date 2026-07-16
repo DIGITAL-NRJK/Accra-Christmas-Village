@@ -18,6 +18,10 @@ export const roleEnum = pgEnum("role", [
   "partner",
   "admin",
   "super_admin",
+  "operations_manager",
+  "content_manager",
+  "compliance_manager",
+  "stand_manager",
 ]);
 
 export const organizationTypeEnum = pgEnum("organization_type", [

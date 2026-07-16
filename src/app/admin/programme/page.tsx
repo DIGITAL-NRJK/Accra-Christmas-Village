@@ -6,6 +6,7 @@ import { StatusPill } from "@/components/status-pill";
 import { ProgrammeItemControls } from "@/app/admin/programme/programme-item-controls";
 import { ProgrammeItemForm } from "@/app/admin/programme/programme-item-form";
 import { listAdminData } from "@/db/queries";
+import { requireAdminSection } from "@/lib/admin-rbac";
 
 export const metadata = {
   title: "Programme Admin",
@@ -22,6 +23,8 @@ function eventHref(eventId: string) {
 }
 
 export default async function AdminProgrammePage({ searchParams }: AdminProgrammePageProps) {
+  await requireAdminSection("programme");
+
   const { events } = await listAdminData();
   const params = await searchParams;
   const selectedEvent = events.find((event) => event.id === params.event) ?? events[0];

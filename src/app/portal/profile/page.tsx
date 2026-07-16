@@ -1,15 +1,19 @@
 import { Building2, Mail, Phone } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { PortalNav } from "@/components/portal-nav";
-import { requireAnyRole } from "@/lib/auth";
+import { requirePortalContext, type PortalSearchParams } from "@/lib/portal-context";
 
 export const metadata = {
   title: "Profile",
 };
 
-export default async function ProfilePage() {
-  const session = await requireAnyRole(["vendor", "sponsor", "partner"]);
-  const organization = session.organization;
+type ProfilePageProps = {
+  searchParams?: Promise<PortalSearchParams>;
+};
+
+export default async function ProfilePage({ searchParams }: ProfilePageProps) {
+  const params = await searchParams;
+  const { organization, previewQuery, session } = await requirePortalContext(params);
 
   return (
     <>
@@ -18,7 +22,7 @@ export default async function ProfilePage() {
         title={organization?.name ?? "Participant profile"}
         description="Organization contact details and participant record for organizer review."
       />
-      <PortalNav activeHref="/portal/profile" />
+      <PortalNav activeHref="/portal/profile" previewQuery={previewQuery} />
       <section className="mx-auto grid w-full max-w-6xl gap-6 px-4 pb-10 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
         <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <Building2 aria-hidden="true" className="size-7 text-acv-palm" />

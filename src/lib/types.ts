@@ -5,6 +5,10 @@ export const roles = [
   "partner",
   "admin",
   "super_admin",
+  "operations_manager",
+  "content_manager",
+  "compliance_manager",
+  "stand_manager",
 ] as const;
 
 export type Role = (typeof roles)[number];

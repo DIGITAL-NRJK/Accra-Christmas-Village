@@ -14,6 +14,7 @@ import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
 import { approveDocument, rejectDocument } from "@/app/admin/documents/actions";
 import { listAdminData } from "@/db/queries";
+import { requireAdminSection } from "@/lib/admin-rbac";
 import type { DocumentStatus, Organization } from "@/lib/types";
 
 export const metadata = {
@@ -130,6 +131,8 @@ function participantHref(participantId: string, filters: { status: string; type:
 }
 
 export default async function AdminDocumentsPage({ searchParams }: AdminDocumentsPageProps) {
+  await requireAdminSection("documents");
+
   const { documentRequirements, documents, organizations } = await listAdminData();
   const params = await searchParams;
   const participantFilter = getFilterValue(params.participant);

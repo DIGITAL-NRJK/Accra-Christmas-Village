@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ChevronRight, FileText, Mail, MapPin, Phone, Store } from "lucide-react";
+import { ChevronRight, FileText, Filter, Mail, MapPin, Phone, RotateCcw, Store } from "lucide-react";
 import { AdminNav } from "@/components/admin-nav";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
 import { listAdminData } from "@/db/queries";
+import { requireAdminSection } from "@/lib/admin-rbac";
 
 export const metadata = {
   title: "Vendors",
@@ -11,6 +12,11 @@ export const metadata = {
 
 type AdminVendorsPageProps = {
   searchParams: Promise<{
+    approved?: string;
+    assignment?: string;
+    category?: string;
+    compliance?: string;
+    onboarding?: string;
     vendor?: string;
   }>;
 };
@@ -18,8 +24,45 @@ type AdminVendorsPageProps = {
 type AdminData = Awaited<ReturnType<typeof listAdminData>>;
 type Vendor = AdminData["vendors"][number];
 
-function vendorHref(vendorId: string) {
-  return `/admin/vendors?vendor=${encodeURIComponent(vendorId)}`;
+const statusFilters = ["all", "not_started", "in_progress", "compliant", "blocked"];
+const approvedFilters = ["all", "yes", "no"];
+const assignmentFilters = ["all", "assigned", "unassigned"];
+
+function getFilterValue(value: string | undefined, allowedValues: string[], fallback = "all") {
+  const normalizedValue = value?.trim() || fallback;
+
+  return allowedValues.includes(normalizedValue) ? normalizedValue : fallback;
+}
+
+function getOpenFilterValue(value: string | undefined, availableValues: string[]) {
+  const normalizedValue = value?.trim() || "all";
+
+  return normalizedValue === "all" || availableValues.includes(normalizedValue)
+    ? normalizedValue
+    : "all";
+}
+
+function vendorHref(
+  vendorId: string,
+  filters: {
+    approved: string;
+    assignment: string;
+    category: string;
+    compliance: string;
+    onboarding: string;
+  },
+) {
+  const query = new URLSearchParams();
+
+  query.set("vendor", vendorId);
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value !== "all") {
+      query.set(key, value);
+    }
+  });
+
+  return `/admin/vendors?${query.toString()}`;
 }
 
 function getVendorContext(vendor: Vendor, data: AdminData) {
@@ -31,9 +74,39 @@ function getVendorContext(vendor: Vendor, data: AdminData) {
 }
 
 export default async function AdminVendorsPage({ searchParams }: AdminVendorsPageProps) {
+  await requireAdminSection("vendors");
+
   const data = await listAdminData();
   const params = await searchParams;
-  const selectedVendor = data.vendors.find((vendor) => vendor.id === params.vendor) ?? data.vendors[0];
+  const categories = Array.from(new Set(data.vendors.map((vendor) => vendor.category))).sort();
+  const categoryFilter = getOpenFilterValue(params.category, categories);
+  const onboardingFilter = getFilterValue(params.onboarding, statusFilters);
+  const complianceFilter = getFilterValue(params.compliance, statusFilters);
+  const approvedFilter = getFilterValue(params.approved, approvedFilters);
+  const assignmentFilter = getFilterValue(params.assignment, assignmentFilters);
+  const activeFilters = {
+    approved: approvedFilter,
+    assignment: assignmentFilter,
+    category: categoryFilter,
+    compliance: complianceFilter,
+    onboarding: onboardingFilter,
+  };
+  const filteredVendors = data.vendors.filter((vendor) => {
+    const categoryMatches = categoryFilter === "all" || vendor.category === categoryFilter;
+    const onboardingMatches = onboardingFilter === "all" || vendor.onboardingStatus === onboardingFilter;
+    const complianceMatches = complianceFilter === "all" || vendor.complianceStatus === complianceFilter;
+    const approvedMatches =
+      approvedFilter === "all" ||
+      (approvedFilter === "yes" && vendor.approved) ||
+      (approvedFilter === "no" && !vendor.approved);
+    const assignmentMatches =
+      assignmentFilter === "all" ||
+      (assignmentFilter === "assigned" && Boolean(vendor.standId)) ||
+      (assignmentFilter === "unassigned" && !vendor.standId);
+
+    return categoryMatches && onboardingMatches && complianceMatches && approvedMatches && assignmentMatches;
+  });
+  const selectedVendor = filteredVendors.find((vendor) => vendor.id === params.vendor) ?? filteredVendors[0];
   const selectedContext = selectedVendor ? getVendorContext(selectedVendor, data) : null;
   const approvedVendors = data.vendors.filter((vendor) => vendor.approved).length;
   const blockedVendors = data.vendors.filter(
@@ -69,6 +142,72 @@ export default async function AdminVendorsPage({ searchParams }: AdminVendorsPag
         </article>
       </section>
 
+      <section className="mx-auto w-full max-w-6xl px-4 pb-5 sm:px-6 lg:px-8">
+        <form
+          className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[1fr_1fr_1fr_1fr_1fr_auto_auto]"
+          method="get"
+        >
+          <label className="grid gap-2">
+            <span className="text-xs font-bold uppercase text-slate-500">Category</span>
+            <select className="rounded-md border border-slate-200 px-3 py-2 text-sm" defaultValue={categoryFilter} name="category">
+              <option value="all">All categories</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-2">
+            <span className="text-xs font-bold uppercase text-slate-500">Onboarding</span>
+            <select className="rounded-md border border-slate-200 px-3 py-2 text-sm" defaultValue={onboardingFilter} name="onboarding">
+              <option value="all">All statuses</option>
+              <option value="not_started">Not started</option>
+              <option value="in_progress">In progress</option>
+              <option value="compliant">Compliant</option>
+              <option value="blocked">Blocked</option>
+            </select>
+          </label>
+          <label className="grid gap-2">
+            <span className="text-xs font-bold uppercase text-slate-500">Compliance</span>
+            <select className="rounded-md border border-slate-200 px-3 py-2 text-sm" defaultValue={complianceFilter} name="compliance">
+              <option value="all">All statuses</option>
+              <option value="not_started">Not started</option>
+              <option value="in_progress">In progress</option>
+              <option value="compliant">Compliant</option>
+              <option value="blocked">Blocked</option>
+            </select>
+          </label>
+          <label className="grid gap-2">
+            <span className="text-xs font-bold uppercase text-slate-500">Approved</span>
+            <select className="rounded-md border border-slate-200 px-3 py-2 text-sm" defaultValue={approvedFilter} name="approved">
+              <option value="all">All</option>
+              <option value="yes">Approved</option>
+              <option value="no">Not approved</option>
+            </select>
+          </label>
+          <label className="grid gap-2">
+            <span className="text-xs font-bold uppercase text-slate-500">Stand</span>
+            <select className="rounded-md border border-slate-200 px-3 py-2 text-sm" defaultValue={assignmentFilter} name="assignment">
+              <option value="all">All</option>
+              <option value="assigned">Assigned</option>
+              <option value="unassigned">Unassigned</option>
+            </select>
+          </label>
+          <button className="inline-flex items-center justify-center gap-2 rounded-md bg-acv-ink px-4 py-2 text-sm font-bold text-white transition hover:bg-acv-palm">
+            <Filter aria-hidden="true" className="size-4" />
+            Filter
+          </button>
+          <Link
+            className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 px-4 py-2 text-sm font-bold text-acv-ink transition hover:border-acv-gold"
+            href="/admin/vendors"
+          >
+            <RotateCcw aria-hidden="true" className="size-4" />
+            Reset
+          </Link>
+        </form>
+      </section>
+
       <section className="mx-auto grid w-full max-w-6xl gap-6 px-4 pb-10 sm:px-6 lg:grid-cols-[0.86fr_1.14fr] lg:px-8">
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 p-4">
@@ -76,7 +215,7 @@ export default async function AdminVendorsPage({ searchParams }: AdminVendorsPag
             <h2 className="mt-1 text-lg font-semibold text-acv-ink">Select a profile</h2>
           </div>
           <div className="grid lg:max-h-[calc(100vh-15rem)] lg:overflow-y-auto">
-            {data.vendors.map((vendor) => {
+            {filteredVendors.map((vendor) => {
               const { organization, stand, zone } = getVendorContext(vendor, data);
               const active = selectedVendor?.id === vendor.id;
 
@@ -85,7 +224,7 @@ export default async function AdminVendorsPage({ searchParams }: AdminVendorsPag
                   className={`grid gap-3 border-b border-slate-100 p-4 transition last:border-b-0 hover:bg-acv-paper ${
                     active ? "bg-acv-paper ring-1 ring-inset ring-acv-gold" : "bg-white"
                   }`}
-                  href={vendorHref(vendor.id)}
+                  href={vendorHref(vendor.id, activeFilters)}
                   id={vendor.id}
                   key={vendor.id}
                 >
@@ -109,11 +248,11 @@ export default async function AdminVendorsPage({ searchParams }: AdminVendorsPag
                 </Link>
               );
             })}
-            {data.vendors.length === 0 ? (
+            {filteredVendors.length === 0 ? (
               <div className="p-5">
-                <h2 className="text-xl font-semibold text-acv-ink">No vendor records yet</h2>
+                <h2 className="text-xl font-semibold text-acv-ink">No matching vendors</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Approve vendor requests or assign stands to create operational records.
+                  Reset filters or broaden criteria to view more vendor records.
                 </p>
               </div>
             ) : null}

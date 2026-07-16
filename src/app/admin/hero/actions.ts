@@ -8,7 +8,7 @@ import {
   updateHeroSlidePublication,
   type SaveHeroSlideInput,
 } from "@/db/queries";
-import { requireAnyRole } from "@/lib/auth";
+import { requireAdminSection } from "@/lib/admin-rbac";
 import {
   allowedHeroImageExtensions,
   allowedHeroImageMimeTypes,
@@ -193,7 +193,7 @@ export async function createHeroSlideAction(
   _previousState: HeroSlideActionState,
   formData: FormData,
 ): Promise<HeroSlideActionState> {
-  await requireAnyRole(["admin", "super_admin"]);
+  await requireAdminSection("hero");
 
   const slideId = crypto.randomUUID();
   const result = await heroSlideInput(formData, slideId);
@@ -219,7 +219,7 @@ export async function updateHeroSlideAction(
   _previousState: HeroSlideActionState,
   formData: FormData,
 ): Promise<HeroSlideActionState> {
-  await requireAnyRole(["admin", "super_admin"]);
+  await requireAdminSection("hero");
 
   const slideId = textValue(formData, "slideId");
 
@@ -247,7 +247,7 @@ export async function updateHeroSlideAction(
 }
 
 export async function updateHeroSlidePublicationAction(formData: FormData) {
-  await requireAnyRole(["admin", "super_admin"]);
+  await requireAdminSection("hero");
 
   const slideId = textValue(formData, "slideId");
   const published = formData.get("published") === "true";
@@ -261,7 +261,7 @@ export async function updateHeroSlidePublicationAction(formData: FormData) {
 }
 
 export async function deleteHeroSlideAction(formData: FormData) {
-  await requireAnyRole(["admin", "super_admin"]);
+  await requireAdminSection("hero");
 
   const slideId = textValue(formData, "slideId");
 

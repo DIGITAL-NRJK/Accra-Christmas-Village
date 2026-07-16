@@ -4,12 +4,15 @@ import { AdminNav } from "@/components/admin-nav";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
 import { listAdminData } from "@/db/queries";
+import { requireAdminSection } from "@/lib/admin-rbac";
 
 export const metadata = {
   title: "Role Preview",
 };
 
 export default async function AdminPreviewPage() {
+  await requireAdminSection("preview");
+
   const { organizations, users } = await listAdminData();
   const participantOrganizations = organizations.filter((organization) =>
     organization.type === "vendor" || organization.type === "sponsor" || organization.type === "partner",

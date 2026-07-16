@@ -8,7 +8,7 @@ import {
   updateProgrammePublication,
   type SaveProgrammeItemInput,
 } from "@/db/queries";
-import { requireAnyRole } from "@/lib/auth";
+import { requireAdminSection } from "@/lib/admin-rbac";
 
 export type ProgrammeItemActionState = {
   message: string;
@@ -71,7 +71,7 @@ export async function createProgrammeItemAction(
   _previousState: ProgrammeItemActionState,
   formData: FormData,
 ): Promise<ProgrammeItemActionState> {
-  await requireAnyRole(["admin", "super_admin"]);
+  await requireAdminSection("programme");
 
   const input = programmeItemInput(formData);
 
@@ -92,7 +92,7 @@ export async function updateProgrammeItemAction(
   _previousState: ProgrammeItemActionState,
   formData: FormData,
 ): Promise<ProgrammeItemActionState> {
-  await requireAnyRole(["admin", "super_admin"]);
+  await requireAdminSection("programme");
 
   const eventId = textValue(formData, "eventId");
   const input = programmeItemInput(formData);
@@ -115,7 +115,7 @@ export async function updateProgrammeItemAction(
 }
 
 export async function updateProgrammePublicationAction(formData: FormData) {
-  await requireAnyRole(["admin", "super_admin"]);
+  await requireAdminSection("programme");
 
   const eventId = String(formData.get("eventId") ?? "");
   const published = isPublishedValue(formData);
@@ -125,7 +125,7 @@ export async function updateProgrammePublicationAction(formData: FormData) {
 }
 
 export async function deleteProgrammeItemAction(formData: FormData) {
-  await requireAnyRole(["admin", "super_admin"]);
+  await requireAdminSection("programme");
 
   const eventId = textValue(formData, "eventId");
 
