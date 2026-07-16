@@ -14,6 +14,7 @@ export type AdminSection =
   | "programme"
   | "sponsors"
   | "stands"
+  | "users"
   | "vendors";
 
 export const adminAccessRoles: Role[] = [
@@ -27,6 +28,7 @@ export const adminAccessRoles: Role[] = [
 
 export const adminNavItems: Array<NavItem & { section: AdminSection }> = [
   { href: "/admin", label: "Dashboard", section: "dashboard" },
+  { href: "/admin/users", label: "Users", section: "users" },
   { href: "/admin/preview", label: "Preview", section: "preview" },
   { href: "/admin/hero", label: "Hero", section: "hero" },
   { href: "/admin/access-requests", label: "Access", section: "access" },
@@ -38,11 +40,14 @@ export const adminNavItems: Array<NavItem & { section: AdminSection }> = [
   { href: "/admin/announcements", label: "Announcements", section: "announcements" },
 ];
 
-const allSections = adminNavItems.map((item) => item.section).concat("compliance") as AdminSection[];
+const superAdminSections = adminNavItems
+  .map((item) => item.section)
+  .concat("compliance") as AdminSection[];
+const adminSections = superAdminSections.filter((section) => section !== "users");
 
 const adminSectionPermissions: Record<Role, AdminSection[]> = {
-  admin: allSections,
-  super_admin: allSections,
+  admin: adminSections,
+  super_admin: superAdminSections,
   operations_manager: ["dashboard", "preview", "access", "vendors", "sponsors", "stands"],
   content_manager: ["dashboard", "preview", "hero", "programme", "announcements"],
   compliance_manager: ["dashboard", "preview", "access", "vendors", "sponsors", "documents", "compliance"],
