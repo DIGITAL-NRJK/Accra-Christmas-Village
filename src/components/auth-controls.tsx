@@ -1,13 +1,15 @@
 "use client";
 
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
-import { LayoutDashboard, LogIn, UserPlus } from "lucide-react";
+import Link from "next/link";
+import { Bell, LayoutDashboard, LogIn, UserPlus } from "lucide-react";
 
 type AuthControlsProps = {
   compact?: boolean;
+  unreadNotifications?: number;
 };
 
-export function AuthControls({ compact = false }: AuthControlsProps = {}) {
+export function AuthControls({ compact = false, unreadNotifications = 0 }: AuthControlsProps = {}) {
   const signInLabel = compact ? "Sign in" : "Participant sign in";
   const signUpLabel = compact ? "Apply" : "Vendor/Sponsor/Partner";
   const signInClass = compact
@@ -34,6 +36,18 @@ export function AuthControls({ compact = false }: AuthControlsProps = {}) {
         </SignUpButton>
       </Show>
       <Show when="signed-in">
+        <Link
+          aria-label={`${unreadNotifications} unread notifications`}
+          className="relative inline-flex size-9 items-center justify-center rounded-full border border-white/[0.18] bg-white/[0.08] text-white transition hover:bg-white/[0.16]"
+          href="/portal/notifications"
+        >
+          <Bell aria-hidden="true" className="size-4" />
+          {unreadNotifications > 0 ? (
+            <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-acv-gold px-1 text-center text-[10px] font-black leading-5 text-acv-night">
+              {unreadNotifications > 99 ? "99+" : unreadNotifications}
+            </span>
+          ) : null}
+        </Link>
         <UserButton>
           <UserButton.MenuItems>
             <UserButton.Link

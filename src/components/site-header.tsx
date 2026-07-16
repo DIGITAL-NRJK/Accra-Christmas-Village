@@ -3,6 +3,8 @@ import { MapPin, Ticket } from "lucide-react";
 import { AnnouncementBanner } from "@/components/announcement-banner";
 import { AuthControls } from "@/components/auth-controls";
 import { BrandLogo } from "@/components/brand-logo";
+import { listNotificationsForUser } from "@/db/queries";
+import { getCurrentAppSession } from "@/lib/auth";
 
 const publicLinks = [
   { href: "/map", label: "Map", code: "A" },
@@ -15,6 +17,16 @@ const publicLinks = [
 ];
 
 export async function SiteHeader() {
+  const session = await getCurrentAppSession();
+  const userNotifications = session?.user
+    ? await listNotificationsForUser(
+        session.user.id,
+        session.role,
+        session.user.organizationId,
+      )
+    : [];
+  const unreadNotifications = userNotifications.filter((notification) => !notification.read).length;
+
   return (
     <header className="sticky top-0 z-50 border-b border-acv-gold/[0.35] bg-acv-night/[0.96] text-white shadow-[0_18px_45px_rgb(0_0_0/0.18)] backdrop-blur-xl">
       <AnnouncementBanner />
@@ -59,7 +71,7 @@ export async function SiteHeader() {
           </nav>
 
           <div className="ml-auto hidden shrink-0 items-center xl:flex">
-            <AuthControls compact />
+            <AuthControls compact unreadNotifications={unreadNotifications} />
           </div>
         </div>
 
@@ -82,7 +94,7 @@ export async function SiteHeader() {
           </Link>
         </div>
         <div className="border-t border-white/10 px-4 py-3 sm:px-6 xl:hidden">
-          <AuthControls compact />
+          <AuthControls compact unreadNotifications={unreadNotifications} />
         </div>
       </div>
       <div className="h-1.5 acv-route-band" />

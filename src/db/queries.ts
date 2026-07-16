@@ -9,6 +9,8 @@ import {
   events,
   heroSlides,
   incidents,
+  notificationReads,
+  notifications,
   onboardingTasks,
   organizations,
   sponsors,
@@ -689,6 +691,7 @@ export async function listAdminData() {
       events: [],
       heroSlides: defaultHeroSlides,
       incidents: defaultIncidents,
+      notifications: [],
       organizations: [],
       sponsors: [],
       stands: [],
@@ -708,6 +711,7 @@ export async function listAdminData() {
     eventRows,
     heroSlideRows,
     incidentRows,
+    notificationRows,
     organizationRows,
     sponsorRows,
     standRows,
@@ -722,6 +726,7 @@ export async function listAdminData() {
     db.select().from(events).orderBy(asc(events.day), asc(events.startsAt)),
     db.select(heroSlideColumns).from(heroSlides).orderBy(asc(heroSlides.sortOrder), desc(heroSlides.createdAt)),
     db.select().from(incidents).orderBy(desc(incidents.occurredAt)),
+    db.select().from(notifications).orderBy(desc(notifications.createdAt)),
     db.select().from(organizations).orderBy(asc(organizations.name)),
     db.select().from(sponsors).orderBy(asc(sponsors.brandName)),
     db.select().from(stands).orderBy(asc(stands.code)),
@@ -738,6 +743,7 @@ export async function listAdminData() {
     events: eventRows,
     heroSlides: heroSlideRows,
     incidents: incidentRows,
+    notifications: notificationRows,
     organizations: organizationRows,
     sponsors: sponsorRows,
     stands: standRows,
@@ -745,6 +751,99 @@ export async function listAdminData() {
     vendors: vendorRows,
     zones: zoneRows,
   };
+}
+
+export type CreateNotificationInput = {
+  actionHref: string | null;
+  audience: string;
+  body: string;
+  createdByUserId: string | null;
+  expiresAt: Date | null;
+  organizationId: string | null;
+  title: string;
+  type: string;
+};
+
+export async function createNotification(input: CreateNotificationInput) {
+  if (!process.env.DATABASE_URL) {
+    console.info("Skipped notification creation because DATABASE_URL is not set.", input);
+    return;
+  }
+
+  const db = getDb();
+  await db.insert(notifications).values({ ...input, id: crypto.randomUUID() });
+}
+
+export async function deleteNotification(notificationId: string) {
+  if (!process.env.DATABASE_URL || !notificationId) {
+    return;
+  }
+
+  const db = getDb();
+  await db.delete(notifications).where(eq(notifications.id, notificationId));
+}
+
+export async function listNotificationsForUser(
+  userId: string,
+  role: Role,
+  organizationId: string | null,
+) {
+  if (!process.env.DATABASE_URL || !userId) {
+    return [];
+  }
+
+  const db = getDb();
+  const [notificationRows, readRows] = await Promise.all([
+    db.select().from(notifications).orderBy(desc(notifications.createdAt)),
+    db.select().from(notificationReads).where(eq(notificationReads.userId, userId)),
+  ]);
+  const readIds = new Set(readRows.map((read) => read.notificationId));
+  const now = new Date();
+
+  return notificationRows
+    .filter((notification) => {
+      const active = !notification.expiresAt || notification.expiresAt >= now;
+      const audienceMatches =
+        notification.audience === "all" ||
+        notification.audience === role ||
+        (notification.audience === "internal" &&
+          ["admin", "super_admin", "operations_manager", "content_manager", "compliance_manager", "stand_manager"].includes(role));
+      const organizationMatches =
+        !notification.organizationId || notification.organizationId === organizationId;
+
+      return active && audienceMatches && organizationMatches;
+    })
+    .map((notification) => ({ ...notification, read: readIds.has(notification.id) }));
+}
+
+export async function markNotificationRead(notificationId: string, userId: string) {
+  if (!process.env.DATABASE_URL || !notificationId || !userId) {
+    return;
+  }
+
+  const db = getDb();
+  await db
+    .insert(notificationReads)
+    .values({ id: crypto.randomUUID(), notificationId, userId })
+    .onConflictDoNothing();
+}
+
+export async function markAllNotificationsRead(notificationIds: string[], userId: string) {
+  if (!process.env.DATABASE_URL || !userId || notificationIds.length === 0) {
+    return;
+  }
+
+  const db = getDb();
+  await db
+    .insert(notificationReads)
+    .values(
+      notificationIds.map((notificationId) => ({
+        id: crypto.randomUUID(),
+        notificationId,
+        userId,
+      })),
+    )
+    .onConflictDoNothing();
 }
 
 export async function listPublishedEvents() {

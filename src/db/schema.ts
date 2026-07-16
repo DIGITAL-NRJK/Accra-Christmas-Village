@@ -300,6 +300,50 @@ export const announcements = pgTable("announcements", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: text("id").primaryKey(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    type: text("type").notNull().default("info"),
+    audience: text("audience").notNull().default("all"),
+    organizationId: text("organization_id").references(() => organizations.id, {
+      onDelete: "cascade",
+    }),
+    actionHref: text("action_href"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdByUserId: text("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("notifications_audience_idx").on(table.audience),
+    index("notifications_organization_idx").on(table.organizationId),
+  ],
+);
+
+export const notificationReads = pgTable(
+  "notification_reads",
+  {
+    id: text("id").primaryKey(),
+    notificationId: text("notification_id")
+      .notNull()
+      .references(() => notifications.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    readAt: timestamp("read_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("notification_reads_notification_user_unique").on(
+      table.notificationId,
+      table.userId,
+    ),
+  ],
+);
+
 export const incidents = pgTable(
   "incidents",
   {
