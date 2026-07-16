@@ -6,10 +6,13 @@ import type { Role } from "@/lib/types";
 export type AdminSection =
   | "access"
   | "announcements"
+  | "audit"
   | "compliance"
   | "dashboard"
   | "documents"
   | "hero"
+  | "incidents"
+  | "notifications"
   | "preview"
   | "programme"
   | "sponsors"
@@ -28,12 +31,15 @@ export const adminAccessRoles: Role[] = [
 
 export const adminNavItems: Array<NavItem & { section: AdminSection }> = [
   { href: "/admin", label: "Dashboard", section: "dashboard" },
+  { href: "/admin/audit-log", label: "Audit log", section: "audit" },
   { href: "/admin/users", label: "Users", section: "users" },
   { href: "/admin/preview", label: "Preview", section: "preview" },
   { href: "/admin/hero", label: "Hero", section: "hero" },
   { href: "/admin/access-requests", label: "Access", section: "access" },
   { href: "/admin/vendors", label: "Vendors", section: "vendors" },
   { href: "/admin/sponsors", label: "Sponsors", section: "sponsors" },
+  { href: "/admin/incidents", label: "Incidents", section: "incidents" },
+  { href: "/admin/notifications", label: "Notifications", section: "notifications" },
   { href: "/admin/documents", label: "Documents", section: "documents" },
   { href: "/admin/compliance", label: "Compliance", section: "compliance" },
   { href: "/admin/stands", label: "Stands", section: "stands" },
@@ -46,9 +52,9 @@ const allAdminSections = adminNavItems.map((item) => item.section);
 const adminSectionPermissions: Record<Role, AdminSection[]> = {
   admin: allAdminSections,
   super_admin: allAdminSections,
-  operations_manager: ["dashboard", "access", "vendors", "sponsors", "stands"],
-  content_manager: ["dashboard", "hero", "programme", "announcements"],
-  compliance_manager: ["dashboard", "documents", "compliance"],
+  operations_manager: ["dashboard", "access", "vendors", "sponsors", "incidents", "notifications", "stands"],
+  content_manager: ["dashboard", "hero", "programme", "announcements", "notifications"],
+  compliance_manager: ["dashboard", "documents", "compliance", "notifications"],
   stand_manager: ["dashboard", "stands"],
   partner: [],
   sponsor: [],

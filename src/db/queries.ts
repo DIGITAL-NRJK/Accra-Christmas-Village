@@ -8,6 +8,9 @@ import {
   documents,
   events,
   heroSlides,
+  incidents,
+  notificationReads,
+  notifications,
   onboardingTasks,
   organizations,
   sponsors,
@@ -17,9 +20,11 @@ import {
   zones,
 } from "@/db/schema";
 import { defaultHeroSlides } from "@/lib/hero-slides";
+import { incidents as defaultIncidents } from "@/lib/data";
 import type {
   DocumentStatus,
   HeroSlide,
+  Incident,
   ParticipantRole,
   Role,
   Sponsor,
@@ -131,6 +136,7 @@ export async function reviewDocument(
   status: Extract<DocumentStatus, "approved" | "rejected">,
   reviewerUserId: string,
   reviewerNote: string,
+  expiresAt: Date | null = null,
 ) {
   if (!process.env.DATABASE_URL) {
     console.info("Skipped Neon document review because DATABASE_URL is not set.", {
@@ -138,6 +144,7 @@ export async function reviewDocument(
       status,
       reviewerUserId,
       reviewerNote,
+      expiresAt,
     });
     return;
   }
@@ -152,6 +159,7 @@ export async function reviewDocument(
       rejectionReason: status === "rejected" ? reviewerNote : null,
       reviewedAt: new Date(),
       reviewedByUserId: reviewerUserId,
+      expiresAt: status === "approved" ? expiresAt : null,
     })
     .where(eq(documents.id, documentId));
 }
@@ -681,10 +689,13 @@ export async function listAdminData() {
     return {
       accessRequests: [],
       announcements: [],
+      auditLogs: [],
       documents: [],
       documentRequirements: [],
       events: [],
       heroSlides: defaultHeroSlides,
+      incidents: defaultIncidents,
+      notifications: [],
       organizations: [],
       sponsors: [],
       stands: [],
@@ -699,10 +710,13 @@ export async function listAdminData() {
   const [
     accessRequestRows,
     announcementRows,
+    auditLogRows,
     documentRows,
     documentRequirementRows,
     eventRows,
     heroSlideRows,
+    incidentRows,
+    notificationRows,
     organizationRows,
     sponsorRows,
     standRows,
@@ -712,10 +726,13 @@ export async function listAdminData() {
   ] = await Promise.all([
     db.select().from(accessRequests).orderBy(desc(accessRequests.createdAt)),
     db.select().from(announcements).orderBy(desc(announcements.createdAt)),
+    db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)),
     db.select().from(documents).orderBy(desc(documents.createdAt)),
     db.select().from(documentRequirements).orderBy(asc(documentRequirements.sortOrder)),
     db.select().from(events).orderBy(asc(events.day), asc(events.startsAt)),
     db.select(heroSlideColumns).from(heroSlides).orderBy(asc(heroSlides.sortOrder), desc(heroSlides.createdAt)),
+    db.select().from(incidents).orderBy(desc(incidents.occurredAt)),
+    db.select().from(notifications).orderBy(desc(notifications.createdAt)),
     db.select().from(organizations).orderBy(asc(organizations.name)),
     db.select().from(sponsors).orderBy(asc(sponsors.brandName)),
     db.select().from(stands).orderBy(asc(stands.code)),
@@ -727,10 +744,13 @@ export async function listAdminData() {
   return {
     accessRequests: accessRequestRows,
     announcements: announcementRows,
+    auditLogs: auditLogRows,
     documents: documentRows,
     documentRequirements: documentRequirementRows,
     events: eventRows,
     heroSlides: heroSlideRows,
+    incidents: incidentRows,
+    notifications: notificationRows,
     organizations: organizationRows,
     sponsors: sponsorRows,
     stands: standRows,
@@ -738,6 +758,116 @@ export async function listAdminData() {
     vendors: vendorRows,
     zones: zoneRows,
   };
+}
+
+export async function recordAuditLog(input: {
+  action: string;
+  actorUserId: string | null;
+  entityId: string;
+  entityType: string;
+  metadata?: Record<string, unknown>;
+}) {
+  if (!process.env.DATABASE_URL) return;
+
+  const db = getDb();
+  await db.insert(auditLogs).values({
+    ...input,
+    id: crypto.randomUUID(),
+    metadata: input.metadata ?? {},
+  });
+}
+
+export type CreateNotificationInput = {
+  actionHref: string | null;
+  audience: string;
+  body: string;
+  createdByUserId: string | null;
+  expiresAt: Date | null;
+  organizationId: string | null;
+  title: string;
+  type: string;
+};
+
+export async function createNotification(input: CreateNotificationInput) {
+  if (!process.env.DATABASE_URL) {
+    console.info("Skipped notification creation because DATABASE_URL is not set.", input);
+    return;
+  }
+
+  const db = getDb();
+  await db.insert(notifications).values({ ...input, id: crypto.randomUUID() });
+}
+
+export async function deleteNotification(notificationId: string) {
+  if (!process.env.DATABASE_URL || !notificationId) {
+    return;
+  }
+
+  const db = getDb();
+  await db.delete(notifications).where(eq(notifications.id, notificationId));
+}
+
+export async function listNotificationsForUser(
+  userId: string,
+  role: Role,
+  organizationId: string | null,
+) {
+  if (!process.env.DATABASE_URL || !userId) {
+    return [];
+  }
+
+  const db = getDb();
+  const [notificationRows, readRows] = await Promise.all([
+    db.select().from(notifications).orderBy(desc(notifications.createdAt)),
+    db.select().from(notificationReads).where(eq(notificationReads.userId, userId)),
+  ]);
+  const readIds = new Set(readRows.map((read) => read.notificationId));
+  const now = new Date();
+
+  return notificationRows
+    .filter((notification) => {
+      const active = !notification.expiresAt || notification.expiresAt >= now;
+      const audienceMatches =
+        notification.audience === "all" ||
+        notification.audience === role ||
+        (notification.audience === "internal" &&
+          ["admin", "super_admin", "operations_manager", "content_manager", "compliance_manager", "stand_manager"].includes(role));
+      const organizationMatches =
+        !notification.organizationId || notification.organizationId === organizationId;
+
+      return active && audienceMatches && organizationMatches;
+    })
+    .map((notification) => ({ ...notification, read: readIds.has(notification.id) }));
+}
+
+export async function markNotificationRead(notificationId: string, userId: string) {
+  if (!process.env.DATABASE_URL || !notificationId || !userId) {
+    return;
+  }
+
+  const db = getDb();
+  await db
+    .insert(notificationReads)
+    .values({ id: crypto.randomUUID(), notificationId, userId })
+    .onConflictDoNothing();
+}
+
+export async function markAllNotificationsRead(notificationIds: string[], userId: string) {
+  if (!process.env.DATABASE_URL || !userId || notificationIds.length === 0) {
+    return;
+  }
+
+  const db = getDb();
+  await db
+    .insert(notificationReads)
+    .values(
+      notificationIds.map((notificationId) => ({
+        id: crypto.randomUUID(),
+        notificationId,
+        userId,
+      })),
+    )
+    .onConflictDoNothing();
 }
 
 export async function listPublishedEvents() {
@@ -1155,6 +1285,65 @@ export async function deleteSponsor(sponsorId: string) {
 
   await db.delete(sponsors).where(eq(sponsors.id, sponsorId));
   await releaseStandIfEmpty(currentSponsor?.standId ?? null);
+}
+
+export type SaveIncidentInput = Omit<Incident, "id" | "occurredAt"> & {
+  occurredAt: Date;
+};
+
+export async function createIncident(input: SaveIncidentInput) {
+  if (!process.env.DATABASE_URL) {
+    console.info("Skipped incident creation because DATABASE_URL is not set.", input);
+    return;
+  }
+
+  const db = getDb();
+  await db.insert(incidents).values({
+    ...input,
+    id: crypto.randomUUID(),
+  });
+}
+
+export async function updateIncident(incidentId: string, input: SaveIncidentInput) {
+  if (!process.env.DATABASE_URL || !incidentId) {
+    return false;
+  }
+
+  const db = getDb();
+  const [updatedIncident] = await db
+    .update(incidents)
+    .set(input)
+    .where(eq(incidents.id, incidentId))
+    .returning({ id: incidents.id });
+
+  return Boolean(updatedIncident);
+}
+
+export async function updateIncidentStatus(
+  incidentId: string,
+  status: Incident["status"],
+) {
+  if (!process.env.DATABASE_URL || !incidentId) {
+    return false;
+  }
+
+  const db = getDb();
+  const [updatedIncident] = await db
+    .update(incidents)
+    .set({ status })
+    .where(eq(incidents.id, incidentId))
+    .returning({ id: incidents.id });
+
+  return Boolean(updatedIncident);
+}
+
+export async function deleteIncident(incidentId: string) {
+  if (!process.env.DATABASE_URL || !incidentId) {
+    return;
+  }
+
+  const db = getDb();
+  await db.delete(incidents).where(eq(incidents.id, incidentId));
 }
 
 export type CreateProgrammeItemInput = {

@@ -8,6 +8,7 @@ import {
   ImageIcon,
   MapPinned,
   Megaphone,
+  Siren,
   ShieldCheck,
   Store,
   Users,
@@ -66,6 +67,7 @@ export default async function AdminPage() {
     documents,
     events,
     heroSlides,
+    incidents,
     organizations,
     sponsors,
     stands,
@@ -81,6 +83,7 @@ export default async function AdminPage() {
   const upcomingProgramme = events.filter((item) => item.published).length;
   const publishedHeroSlides = heroSlides.filter((slide) => slide.published).length;
   const publishedAnnouncements = announcements.filter((announcement) => announcement.published).length;
+  const activeIncidents = incidents.filter((incident) => incident.status !== "resolved").length;
   const vendorUsers = users.filter((user) => user.role === "vendor").length;
   const sponsorUsers = users.filter((user) => user.role === "sponsor").length;
   const partnerUsers = users.filter((user) => user.role === "partner").length;
@@ -101,6 +104,7 @@ export default async function AdminPage() {
     { detail: "Awaiting organizer approval.", href: sectionHref("access", "/admin/access-requests?status=pending"), icon: Handshake, label: "Access requests", value: pendingAccessRequests },
     { detail: "Active and pending vendor records.", href: sectionHref("vendors", "/admin/vendors"), icon: Store, label: "Vendors", value: vendors.length },
     { detail: "Confirmed and active sponsor records.", href: sectionHref("sponsors", "/admin/sponsors"), icon: Users, label: "Sponsors", value: sponsors.length },
+    { detail: "Open or monitored operational incidents.", href: sectionHref("incidents", "/admin/incidents"), icon: Siren, label: "Active incidents", value: activeIncidents },
     { detail: "Participants with missing or rejected document requirements.", href: sectionHref("compliance", "/admin/compliance"), icon: ShieldCheck, label: "Compliance issues", value: complianceIssues },
     { detail: "Awaiting organizer review.", href: sectionHref("documents", "/admin/documents?status=submitted"), icon: FileClock, label: "Pending documents", value: pendingDocuments },
     { detail: "Approved participant documents.", href: sectionHref("documents", "/admin/documents?status=approved"), icon: CheckCircle2, label: "Approved documents", value: approvedDocuments },
