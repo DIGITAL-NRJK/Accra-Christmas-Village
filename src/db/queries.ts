@@ -177,6 +177,25 @@ export async function findUserByClerkIdentity(clerkUserId: string, email: string
   return user ?? null;
 }
 
+export async function updateUserRole(userId: string, role: Role) {
+  if (!process.env.DATABASE_URL) {
+    console.info("Skipped Neon user role update because DATABASE_URL is not set.", {
+      userId,
+      role,
+    });
+    return null;
+  }
+
+  const db = getDb();
+  const [updatedUser] = await db
+    .update(users)
+    .set({ role })
+    .where(eq(users.id, userId))
+    .returning();
+
+  return updatedUser ?? null;
+}
+
 export async function getOrganizationById(organizationId: string | null) {
   if (!process.env.DATABASE_URL || !organizationId) {
     return null;
