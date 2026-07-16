@@ -80,6 +80,7 @@ function matchesScope(role: Role, scope: ScopeFilter) {
 
 export default async function AdminUsersPage({ searchParams }: AdminUsersPageProps) {
   const session = await requireAdminSection("users");
+  const canManageUsers = session.role === "super_admin";
   const { organizations, users } = await listAdminData();
   const params = await searchParams;
   const query = params.query?.trim().toLowerCase() ?? "";
@@ -109,9 +110,13 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
   return (
     <>
       <PageHeader
-        eyebrow="Super admin"
+        eyebrow={canManageUsers ? "Super admin" : "Admin / read only"}
         title="Users"
-        description="Assign portal and admin roles. Changes take effect from the user's next server request or navigation."
+        description={
+          canManageUsers
+            ? "Assign portal and admin roles. Changes take effect from the user's next server request or navigation."
+            : "Review portal and admin access. Role changes and user deletion are reserved for superadmins."
+        }
       />
       <AdminNav activeHref="/admin/users" />
 
@@ -225,6 +230,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
               </div>
 
               <UserManagementControls
+                canManageUsers={canManageUsers}
                 currentRole={user.role}
                 isCurrentUser={isCurrentUser}
                 roleDescription={roleDescriptions[user.role]}
