@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import {
   createIncident,
   deleteIncident,
+  recordAuditLog,
   updateIncident,
   updateIncidentStatus,
   type SaveIncidentInput,
@@ -70,7 +71,7 @@ export async function createIncidentAction(
   _previousState: IncidentActionState,
   formData: FormData,
 ): Promise<IncidentActionState> {
-  await requireAdminSection("incidents");
+  const session = await requireAdminSection("incidents");
 
   const input = incidentInput(formData);
 
@@ -79,6 +80,7 @@ export async function createIncidentAction(
   }
 
   await createIncident(input);
+  await recordAuditLog({ action: "incident.created", actorUserId: session.user?.id ?? null, entityId: input.title, entityType: "incident", metadata: { severity: input.severity, status: input.status, zoneId: input.zoneId } });
   revalidateIncidentPaths();
 
   return { message: "Incident created.", status: "success" };
@@ -88,7 +90,7 @@ export async function updateIncidentAction(
   _previousState: IncidentActionState,
   formData: FormData,
 ): Promise<IncidentActionState> {
-  await requireAdminSection("incidents");
+  const session = await requireAdminSection("incidents");
 
   const incidentId = textValue(formData, "incidentId");
   const input = incidentInput(formData);
@@ -102,13 +104,14 @@ export async function updateIncidentAction(
   }
 
   await updateIncident(incidentId, input);
+  await recordAuditLog({ action: "incident.updated", actorUserId: session.user?.id ?? null, entityId: incidentId, entityType: "incident", metadata: { severity: input.severity, status: input.status } });
   revalidateIncidentPaths();
 
   return { message: "Incident updated.", status: "success" };
 }
 
 export async function updateIncidentStatusAction(formData: FormData) {
-  await requireAdminSection("incidents");
+  const session = await requireAdminSection("incidents");
 
   const incidentId = textValue(formData, "incidentId");
   const status = textValue(formData, "status") as Incident["status"];
@@ -118,14 +121,16 @@ export async function updateIncidentStatusAction(formData: FormData) {
   }
 
   await updateIncidentStatus(incidentId, status);
+  await recordAuditLog({ action: "incident.status_changed", actorUserId: session.user?.id ?? null, entityId: incidentId, entityType: "incident", metadata: { status } });
   revalidateIncidentPaths();
 }
 
 export async function deleteIncidentAction(formData: FormData) {
-  await requireAdminSection("incidents");
+  const session = await requireAdminSection("incidents");
 
   const incidentId = textValue(formData, "incidentId");
 
   await deleteIncident(incidentId);
+  await recordAuditLog({ action: "incident.deleted", actorUserId: session.user?.id ?? null, entityId: incidentId, entityType: "incident" });
   revalidateIncidentPaths();
 }

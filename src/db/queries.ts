@@ -689,6 +689,7 @@ export async function listAdminData() {
     return {
       accessRequests: [],
       announcements: [],
+      auditLogs: [],
       documents: [],
       documentRequirements: [],
       events: [],
@@ -709,6 +710,7 @@ export async function listAdminData() {
   const [
     accessRequestRows,
     announcementRows,
+    auditLogRows,
     documentRows,
     documentRequirementRows,
     eventRows,
@@ -724,6 +726,7 @@ export async function listAdminData() {
   ] = await Promise.all([
     db.select().from(accessRequests).orderBy(desc(accessRequests.createdAt)),
     db.select().from(announcements).orderBy(desc(announcements.createdAt)),
+    db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)),
     db.select().from(documents).orderBy(desc(documents.createdAt)),
     db.select().from(documentRequirements).orderBy(asc(documentRequirements.sortOrder)),
     db.select().from(events).orderBy(asc(events.day), asc(events.startsAt)),
@@ -741,6 +744,7 @@ export async function listAdminData() {
   return {
     accessRequests: accessRequestRows,
     announcements: announcementRows,
+    auditLogs: auditLogRows,
     documents: documentRows,
     documentRequirements: documentRequirementRows,
     events: eventRows,
@@ -754,6 +758,23 @@ export async function listAdminData() {
     vendors: vendorRows,
     zones: zoneRows,
   };
+}
+
+export async function recordAuditLog(input: {
+  action: string;
+  actorUserId: string | null;
+  entityId: string;
+  entityType: string;
+  metadata?: Record<string, unknown>;
+}) {
+  if (!process.env.DATABASE_URL) return;
+
+  const db = getDb();
+  await db.insert(auditLogs).values({
+    ...input,
+    id: crypto.randomUUID(),
+    metadata: input.metadata ?? {},
+  });
 }
 
 export type CreateNotificationInput = {

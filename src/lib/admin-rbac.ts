@@ -6,6 +6,7 @@ import type { Role } from "@/lib/types";
 export type AdminSection =
   | "access"
   | "announcements"
+  | "audit"
   | "compliance"
   | "dashboard"
   | "documents"
@@ -30,6 +31,7 @@ export const adminAccessRoles: Role[] = [
 
 export const adminNavItems: Array<NavItem & { section: AdminSection }> = [
   { href: "/admin", label: "Dashboard", section: "dashboard" },
+  { href: "/admin/audit-log", label: "Audit log", section: "audit" },
   { href: "/admin/users", label: "Users", section: "users" },
   { href: "/admin/preview", label: "Preview", section: "preview" },
   { href: "/admin/hero", label: "Hero", section: "hero" },

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createNotification, deleteNotification } from "@/db/queries";
+import { createNotification, deleteNotification, recordAuditLog } from "@/db/queries";
 import { requireAdminSection } from "@/lib/admin-rbac";
 
 export type NotificationActionState = {
@@ -51,13 +51,16 @@ export async function createNotificationAction(
     title,
     type,
   });
+  await recordAuditLog({ action: "notification.sent", actorUserId: session.user?.id ?? null, entityId: title, entityType: "notification", metadata: { audience, organizationId, type } });
   revalidateNotificationPaths();
 
   return { message: "Notification sent.", status: "success" };
 }
 
 export async function deleteNotificationAction(formData: FormData) {
-  await requireAdminSection("notifications");
-  await deleteNotification(textValue(formData, "notificationId"));
+  const session = await requireAdminSection("notifications");
+  const notificationId = textValue(formData, "notificationId");
+  await deleteNotification(notificationId);
+  await recordAuditLog({ action: "notification.deleted", actorUserId: session.user?.id ?? null, entityId: notificationId, entityType: "notification" });
   revalidateNotificationPaths();
 }

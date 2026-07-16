@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { reviewDocument as persistDocumentReview } from "@/db/queries";
+import { recordAuditLog, reviewDocument as persistDocumentReview } from "@/db/queries";
 import { requireAdminSection } from "@/lib/admin-rbac";
 
 export async function approveDocument(formData: FormData) {
@@ -22,6 +22,7 @@ export async function approveDocument(formData: FormData) {
     reviewerNote,
     expiresAt && !Number.isNaN(expiresAt.getTime()) ? expiresAt : null,
   );
+  await recordAuditLog({ action: "document.approved", actorUserId: session.user.id, entityId: documentId, entityType: "document", metadata: { expiresAt: expiresAt?.toISOString() ?? null } });
   revalidatePath("/admin/documents");
   revalidatePath("/portal/documents");
 }
@@ -36,6 +37,7 @@ export async function rejectDocument(formData: FormData) {
   }
 
   await persistDocumentReview(documentId, "rejected", session.user.id, reviewerNote || "Please resubmit.");
+  await recordAuditLog({ action: "document.rejected", actorUserId: session.user.id, entityId: documentId, entityType: "document", metadata: { reviewerNote: reviewerNote || "Please resubmit." } });
   revalidatePath("/admin/documents");
   revalidatePath("/portal/documents");
 }
