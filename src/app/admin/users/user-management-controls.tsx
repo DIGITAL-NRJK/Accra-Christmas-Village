@@ -16,6 +16,7 @@ type RoleOption = {
 };
 
 type UserManagementControlsProps = {
+  canManageUsers: boolean;
   currentRole: Role;
   isCurrentUser: boolean;
   roleDescription: string;
@@ -30,6 +31,7 @@ const initialDeleteState: DeleteUserActionState = {
 };
 
 export function UserManagementControls({
+  canManageUsers,
   currentRole,
   isCurrentUser,
   roleDescription,
@@ -64,7 +66,7 @@ export function UserManagementControls({
           <select
             className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
             defaultValue={currentRole}
-            disabled={isCurrentUser}
+            disabled={isCurrentUser || !canManageUsers}
             name="role"
           >
             {roleOptions.map((role) => (
@@ -76,45 +78,49 @@ export function UserManagementControls({
           <span className="text-xs leading-5 text-slate-500">
             {isCurrentUser
               ? "Your superadmin account is protected against accidental changes."
-              : roleDescription}
+              : canManageUsers
+                ? roleDescription
+                : "Only a superadmin can change roles or delete users."}
           </span>
         </label>
         <button
           className="inline-flex items-center justify-center gap-2 rounded-md bg-acv-ink px-4 py-2 text-sm font-bold text-white transition hover:bg-acv-palm disabled:cursor-not-allowed disabled:bg-slate-300"
-          disabled={isCurrentUser}
+          disabled={isCurrentUser || !canManageUsers}
         >
           <Save aria-hidden="true" className="size-4" />
           Save role
         </button>
       </form>
 
-      <form
-        action={deleteAction}
-        className="border-t border-slate-200 pt-3"
-        onSubmit={confirmDelete}
-      >
-        <input name="userId" type="hidden" value={userId} />
-        <button
-          className="inline-flex items-center justify-center gap-2 rounded-md border border-rose-200 px-4 py-2 text-sm font-bold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
-          disabled={isCurrentUser || deletePending}
+      {canManageUsers ? (
+        <form
+          action={deleteAction}
+          className="border-t border-slate-200 pt-3"
+          onSubmit={confirmDelete}
         >
-          {deletePending ? (
-            <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
-          ) : (
-            <Trash2 aria-hidden="true" className="size-4" />
-          )}
-          {deletePending ? "Deleting" : "Delete user"}
-        </button>
-        {deleteState.status === "error" ? (
-          <p
-            aria-live="polite"
-            className="mt-3 inline-flex items-start gap-2 rounded-md bg-rose-50 px-3 py-2 text-sm font-medium text-rose-800"
+          <input name="userId" type="hidden" value={userId} />
+          <button
+            className="inline-flex items-center justify-center gap-2 rounded-md border border-rose-200 px-4 py-2 text-sm font-bold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+            disabled={isCurrentUser || deletePending}
           >
-            <AlertCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
-            {deleteState.message}
-          </p>
-        ) : null}
-      </form>
+            {deletePending ? (
+              <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+            ) : (
+              <Trash2 aria-hidden="true" className="size-4" />
+            )}
+            {deletePending ? "Deleting" : "Delete user"}
+          </button>
+          {deleteState.status === "error" ? (
+            <p
+              aria-live="polite"
+              className="mt-3 inline-flex items-start gap-2 rounded-md bg-rose-50 px-3 py-2 text-sm font-medium text-rose-800"
+            >
+              <AlertCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+              {deleteState.message}
+            </p>
+          ) : null}
+        </form>
+      ) : null}
     </div>
   );
 }

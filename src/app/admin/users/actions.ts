@@ -8,7 +8,7 @@ import {
   getUserDeletionContext,
   updateUserRole,
 } from "@/db/queries";
-import { requireAdminSection } from "@/lib/admin-rbac";
+import { requireAnyRole } from "@/lib/auth";
 import { documentStorage } from "@/lib/storage";
 import { roles, type Role } from "@/lib/types";
 
@@ -31,7 +31,7 @@ function revalidateUserPaths() {
 }
 
 export async function updateUserRoleAction(formData: FormData) {
-  const session = await requireAdminSection("users");
+  const session = await requireAnyRole(["super_admin"]);
   const userId = String(formData.get("userId") ?? "").trim();
   const role = String(formData.get("role") ?? "").trim();
 
@@ -51,7 +51,7 @@ export async function deleteUserAction(
   _previousState: DeleteUserActionState,
   formData: FormData,
 ): Promise<DeleteUserActionState> {
-  const session = await requireAdminSection("users");
+  const session = await requireAnyRole(["super_admin"]);
   const userId = String(formData.get("userId") ?? "").trim();
 
   if (!userId) {

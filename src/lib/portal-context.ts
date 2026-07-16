@@ -2,10 +2,10 @@ import { redirect } from "next/navigation";
 import { getOrganizationById } from "@/db/queries";
 import {
   getCurrentAppSession,
-  isAdminRole,
   isParticipantRole,
   type AppSession,
 } from "@/lib/auth";
+import { canAccessAdminSection } from "@/lib/admin-rbac";
 import type { Organization, ParticipantRole, Role } from "@/lib/types";
 
 export type PortalSearchParams = {
@@ -57,7 +57,9 @@ export async function getPortalContext(
   const previewRole = requestedPreviewRole && isParticipantRole(requestedPreviewRole)
     ? requestedPreviewRole
     : null;
-  const isAdminPreview = isAdminRole(session.role) && Boolean(previewRole);
+  const isAdminPreview =
+    canAccessAdminSection(session.role, "preview") &&
+    Boolean(previewRole);
   const previewOrganization = isAdminPreview
     ? toOrganization(await getOrganizationById(searchParams?.organizationId ?? null))
     : undefined;

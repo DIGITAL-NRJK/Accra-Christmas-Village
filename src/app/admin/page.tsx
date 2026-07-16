@@ -5,7 +5,10 @@ import {
   FileClock,
   FileQuestion,
   Handshake,
+  ImageIcon,
   MapPinned,
+  Megaphone,
+  ShieldCheck,
   Store,
   Users,
 } from "lucide-react";
@@ -15,36 +18,99 @@ import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
 import { listAdminData } from "@/db/queries";
 import { canAccessAdminSection, requireAdminSection, type AdminSection } from "@/lib/admin-rbac";
+import type { Role } from "@/lib/types";
 
 export const metadata = {
   title: "Admin",
 };
 
+const dashboardCopy: Partial<Record<Role, { eyebrow: string; title: string; description: string }>> = {
+  admin: {
+    description: "Full operational, content, compliance and user oversight.",
+    eyebrow: "Admin",
+    title: "Organizer dashboard",
+  },
+  compliance_manager: {
+    description: "Document review, missing requirements and participant compliance status.",
+    eyebrow: "Compliance",
+    title: "Compliance dashboard",
+  },
+  content_manager: {
+    description: "Manage public hero content, programme items and announcements.",
+    eyebrow: "Content",
+    title: "Content dashboard",
+  },
+  operations_manager: {
+    description: "Manage participant access, vendors, sponsors and stand operations.",
+    eyebrow: "Operations",
+    title: "Operations dashboard",
+  },
+  stand_manager: {
+    description: "Monitor stand availability and assign participants to event locations.",
+    eyebrow: "Stands",
+    title: "Stand allocation dashboard",
+  },
+  super_admin: {
+    description: "Full operational, content, compliance and user oversight.",
+    eyebrow: "Super admin",
+    title: "Organizer dashboard",
+  },
+};
+
 export default async function AdminPage() {
   const session = await requireAdminSection("dashboard");
 
-  const { accessRequests, documents, events, organizations, sponsors, stands, users, vendors } = await listAdminData();
+  const {
+    accessRequests,
+    announcements,
+    documents,
+    events,
+    heroSlides,
+    organizations,
+    sponsors,
+    stands,
+    users,
+    vendors,
+  } = await listAdminData();
+  const copy = dashboardCopy[session.role] ?? dashboardCopy.admin!;
   const sectionHref = (section: AdminSection, href: string) => (canAccessAdminSection(session.role, section) ? href : undefined);
   const pendingAccessRequests = accessRequests.filter((request) => request.status === "pending").length;
   const pendingDocuments = documents.filter((document) => document.status === "submitted").length;
   const approvedDocuments = documents.filter((document) => document.status === "approved").length;
   const missingDocuments = documents.filter((document) => document.status === "missing").length;
   const upcomingProgramme = events.filter((item) => item.published).length;
+  const publishedHeroSlides = heroSlides.filter((slide) => slide.published).length;
+  const publishedAnnouncements = announcements.filter((announcement) => announcement.published).length;
   const vendorUsers = users.filter((user) => user.role === "vendor").length;
   const sponsorUsers = users.filter((user) => user.role === "sponsor").length;
   const partnerUsers = users.filter((user) => user.role === "partner").length;
   const assignedStands = stands.filter((stand) => stand.status === "assigned").length;
+  const availableStands = stands.filter((stand) => stand.status === "available").length;
+  const unassignedParticipants =
+    vendors.filter((vendor) => !vendor.standId).length +
+    sponsors.filter((sponsor) => !sponsor.standId).length;
+  const complianceIssues = new Set(
+    documents
+      .filter((document) => document.status === "missing" || document.status === "rejected")
+      .map((document) => document.organizationId),
+  ).size;
   const organizationNames = new Map(organizations.map((organization) => [organization.id, organization.name]));
   const documentQueue = documents.filter((document) => document.status === "submitted" || document.status === "rejected");
   const metricCards = [
+    { detail: "Accounts with portal or admin access.", href: sectionHref("users", "/admin/users"), icon: Users, label: "Users", value: users.length },
     { detail: "Awaiting organizer approval.", href: sectionHref("access", "/admin/access-requests?status=pending"), icon: Handshake, label: "Access requests", value: pendingAccessRequests },
     { detail: "Active and pending vendor records.", href: sectionHref("vendors", "/admin/vendors"), icon: Store, label: "Vendors", value: vendors.length },
     { detail: "Confirmed and active sponsor records.", href: sectionHref("sponsors", "/admin/sponsors"), icon: Users, label: "Sponsors", value: sponsors.length },
+    { detail: "Participants with missing or rejected document requirements.", href: sectionHref("compliance", "/admin/compliance"), icon: ShieldCheck, label: "Compliance issues", value: complianceIssues },
     { detail: "Awaiting organizer review.", href: sectionHref("documents", "/admin/documents?status=submitted"), icon: FileClock, label: "Pending documents", value: pendingDocuments },
     { detail: "Approved participant documents.", href: sectionHref("documents", "/admin/documents?status=approved"), icon: CheckCircle2, label: "Approved documents", value: approvedDocuments },
     { detail: "Required files not submitted.", href: sectionHref("documents", "/admin/documents?status=missing"), icon: FileQuestion, label: "Missing documents", value: missingDocuments },
+    { detail: "Published homepage carousel slides.", href: sectionHref("hero", "/admin/hero"), icon: ImageIcon, label: "Hero slides", value: publishedHeroSlides },
     { detail: "Published schedule items.", href: sectionHref("programme", "/admin/programme"), icon: CalendarClock, label: "Programme items", value: upcomingProgramme },
+    { detail: "Published participant and public notices.", href: sectionHref("announcements", "/admin/announcements"), icon: Megaphone, label: "Announcements", value: publishedAnnouncements },
     { detail: "Stand allocation coverage.", href: sectionHref("stands", "/admin/stands"), icon: MapPinned, label: "Assigned stands", value: `${assignedStands}/${stands.length}` },
+    { detail: "Locations ready for a new assignment.", href: sectionHref("stands", "/admin/stands"), icon: MapPinned, label: "Available stands", value: availableStands },
+    { detail: "Vendors and sponsors without a stand.", href: sectionHref("stands", "/admin/stands"), icon: Store, label: "Unassigned participants", value: unassignedParticipants },
   ].filter(({ href }) => Boolean(href));
   const roleCoverageItems = [
     { href: sectionHref("vendors", "/admin/vendors"), label: "Vendor users", value: vendorUsers },
@@ -56,9 +122,9 @@ export default async function AdminPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Admin"
-        title="Organizer dashboard"
-        description="Operational counts for vendors, sponsors, document review, stand allocations and upcoming programme items."
+        eyebrow={copy.eyebrow}
+        title={copy.title}
+        description={copy.description}
       />
       <AdminNav activeHref="/admin" />
       <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 pb-10 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">

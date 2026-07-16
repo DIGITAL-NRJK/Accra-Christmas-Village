@@ -35,23 +35,21 @@ export const adminNavItems: Array<NavItem & { section: AdminSection }> = [
   { href: "/admin/vendors", label: "Vendors", section: "vendors" },
   { href: "/admin/sponsors", label: "Sponsors", section: "sponsors" },
   { href: "/admin/documents", label: "Documents", section: "documents" },
+  { href: "/admin/compliance", label: "Compliance", section: "compliance" },
   { href: "/admin/stands", label: "Stands", section: "stands" },
   { href: "/admin/programme", label: "Programme", section: "programme" },
   { href: "/admin/announcements", label: "Announcements", section: "announcements" },
 ];
 
-const superAdminSections = adminNavItems
-  .map((item) => item.section)
-  .concat("compliance") as AdminSection[];
-const adminSections = superAdminSections.filter((section) => section !== "users");
+const allAdminSections = adminNavItems.map((item) => item.section);
 
 const adminSectionPermissions: Record<Role, AdminSection[]> = {
-  admin: adminSections,
-  super_admin: superAdminSections,
-  operations_manager: ["dashboard", "preview", "access", "vendors", "sponsors", "stands"],
-  content_manager: ["dashboard", "preview", "hero", "programme", "announcements"],
-  compliance_manager: ["dashboard", "preview", "access", "vendors", "sponsors", "documents", "compliance"],
-  stand_manager: ["dashboard", "preview", "vendors", "sponsors", "stands"],
+  admin: allAdminSections,
+  super_admin: allAdminSections,
+  operations_manager: ["dashboard", "access", "vendors", "sponsors", "stands"],
+  content_manager: ["dashboard", "hero", "programme", "announcements"],
+  compliance_manager: ["dashboard", "documents", "compliance"],
+  stand_manager: ["dashboard", "stands"],
   partner: [],
   sponsor: [],
   vendor: [],
