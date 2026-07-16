@@ -8,6 +8,7 @@ import {
   documents,
   events,
   heroSlides,
+  incidents,
   onboardingTasks,
   organizations,
   sponsors,
@@ -17,9 +18,11 @@ import {
   zones,
 } from "@/db/schema";
 import { defaultHeroSlides } from "@/lib/hero-slides";
+import { incidents as defaultIncidents } from "@/lib/data";
 import type {
   DocumentStatus,
   HeroSlide,
+  Incident,
   ParticipantRole,
   Role,
   Sponsor,
@@ -685,6 +688,7 @@ export async function listAdminData() {
       documentRequirements: [],
       events: [],
       heroSlides: defaultHeroSlides,
+      incidents: defaultIncidents,
       organizations: [],
       sponsors: [],
       stands: [],
@@ -703,6 +707,7 @@ export async function listAdminData() {
     documentRequirementRows,
     eventRows,
     heroSlideRows,
+    incidentRows,
     organizationRows,
     sponsorRows,
     standRows,
@@ -716,6 +721,7 @@ export async function listAdminData() {
     db.select().from(documentRequirements).orderBy(asc(documentRequirements.sortOrder)),
     db.select().from(events).orderBy(asc(events.day), asc(events.startsAt)),
     db.select(heroSlideColumns).from(heroSlides).orderBy(asc(heroSlides.sortOrder), desc(heroSlides.createdAt)),
+    db.select().from(incidents).orderBy(desc(incidents.occurredAt)),
     db.select().from(organizations).orderBy(asc(organizations.name)),
     db.select().from(sponsors).orderBy(asc(sponsors.brandName)),
     db.select().from(stands).orderBy(asc(stands.code)),
@@ -731,6 +737,7 @@ export async function listAdminData() {
     documentRequirements: documentRequirementRows,
     events: eventRows,
     heroSlides: heroSlideRows,
+    incidents: incidentRows,
     organizations: organizationRows,
     sponsors: sponsorRows,
     stands: standRows,
@@ -1155,6 +1162,65 @@ export async function deleteSponsor(sponsorId: string) {
 
   await db.delete(sponsors).where(eq(sponsors.id, sponsorId));
   await releaseStandIfEmpty(currentSponsor?.standId ?? null);
+}
+
+export type SaveIncidentInput = Omit<Incident, "id" | "occurredAt"> & {
+  occurredAt: Date;
+};
+
+export async function createIncident(input: SaveIncidentInput) {
+  if (!process.env.DATABASE_URL) {
+    console.info("Skipped incident creation because DATABASE_URL is not set.", input);
+    return;
+  }
+
+  const db = getDb();
+  await db.insert(incidents).values({
+    ...input,
+    id: crypto.randomUUID(),
+  });
+}
+
+export async function updateIncident(incidentId: string, input: SaveIncidentInput) {
+  if (!process.env.DATABASE_URL || !incidentId) {
+    return false;
+  }
+
+  const db = getDb();
+  const [updatedIncident] = await db
+    .update(incidents)
+    .set(input)
+    .where(eq(incidents.id, incidentId))
+    .returning({ id: incidents.id });
+
+  return Boolean(updatedIncident);
+}
+
+export async function updateIncidentStatus(
+  incidentId: string,
+  status: Incident["status"],
+) {
+  if (!process.env.DATABASE_URL || !incidentId) {
+    return false;
+  }
+
+  const db = getDb();
+  const [updatedIncident] = await db
+    .update(incidents)
+    .set({ status })
+    .where(eq(incidents.id, incidentId))
+    .returning({ id: incidents.id });
+
+  return Boolean(updatedIncident);
+}
+
+export async function deleteIncident(incidentId: string) {
+  if (!process.env.DATABASE_URL || !incidentId) {
+    return;
+  }
+
+  const db = getDb();
+  await db.delete(incidents).where(eq(incidents.id, incidentId));
 }
 
 export type CreateProgrammeItemInput = {

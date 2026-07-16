@@ -10,6 +10,7 @@ export type AdminSection =
   | "dashboard"
   | "documents"
   | "hero"
+  | "incidents"
   | "preview"
   | "programme"
   | "sponsors"
@@ -34,6 +35,7 @@ export const adminNavItems: Array<NavItem & { section: AdminSection }> = [
   { href: "/admin/access-requests", label: "Access", section: "access" },
   { href: "/admin/vendors", label: "Vendors", section: "vendors" },
   { href: "/admin/sponsors", label: "Sponsors", section: "sponsors" },
+  { href: "/admin/incidents", label: "Incidents", section: "incidents" },
   { href: "/admin/documents", label: "Documents", section: "documents" },
   { href: "/admin/compliance", label: "Compliance", section: "compliance" },
   { href: "/admin/stands", label: "Stands", section: "stands" },
@@ -46,7 +48,7 @@ const allAdminSections = adminNavItems.map((item) => item.section);
 const adminSectionPermissions: Record<Role, AdminSection[]> = {
   admin: allAdminSections,
   super_admin: allAdminSections,
-  operations_manager: ["dashboard", "access", "vendors", "sponsors", "stands"],
+  operations_manager: ["dashboard", "access", "vendors", "sponsors", "incidents", "stands"],
   content_manager: ["dashboard", "hero", "programme", "announcements"],
   compliance_manager: ["dashboard", "documents", "compliance"],
   stand_manager: ["dashboard", "stands"],
