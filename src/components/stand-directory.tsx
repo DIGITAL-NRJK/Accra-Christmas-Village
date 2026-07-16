@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Store, Tags } from "lucide-react";
+import { Navigation, Store, Tags } from "lucide-react";
 import { StatusPill } from "@/components/status-pill";
 
 export type StandDirectoryItem = {
@@ -84,6 +85,13 @@ export function StandDirectory({ items }: StandDirectoryProps) {
                 <dd className="mt-1 text-acv-ink">{item.category}</dd>
               </div>
             </dl>
+            <Link
+              className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-acv-palm transition hover:text-acv-ink"
+              href={`/map?stand=${encodeURIComponent(item.id)}`}
+            >
+              <Navigation aria-hidden="true" className="size-4" />
+              Find on map
+            </Link>
           </article>
         ))}
       </div>
