@@ -3,6 +3,8 @@ import { ChevronRight, FileText, Filter, Mail, MapPin, Phone, RotateCcw, Store }
 import { AdminNav } from "@/components/admin-nav";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
+import { VendorControls } from "@/app/admin/vendors/vendor-controls";
+import { VendorForm } from "@/app/admin/vendors/vendor-form";
 import { listAdminData } from "@/db/queries";
 import { requireAdminSection } from "@/lib/admin-rbac";
 
@@ -276,6 +278,12 @@ export default async function AdminVendorsPage({ searchParams }: AdminVendorsPag
               </div>
 
               <div className="grid gap-5 p-5">
+                <VendorForm
+                  organization={selectedContext.organization}
+                  stands={data.stands}
+                  vendor={selectedVendor}
+                />
+
                 <div className="grid gap-3 rounded-lg bg-acv-paper p-4">
                   <p className="inline-flex items-center gap-2 text-sm font-bold text-acv-ink">
                     <Store aria-hidden="true" className="size-4 text-acv-clay" />
@@ -336,6 +344,10 @@ export default async function AdminVendorsPage({ searchParams }: AdminVendorsPag
                     </Link>
                   ) : null}
                 </div>
+                <VendorControls
+                  title={selectedVendor.tradingName}
+                  vendorId={selectedVendor.id}
+                />
               </div>
             </>
           ) : (

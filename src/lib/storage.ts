@@ -20,6 +20,7 @@ export type HeroImageStorageContext = {
 export interface DocumentStorage {
   put(file: File, context: StorageContext): Promise<StoredFile>;
   get(key: string): Promise<Blob | null>;
+  delete(key: string): Promise<void>;
 }
 
 export interface HeroImageStorage {
@@ -57,6 +58,10 @@ export class LocalMockDocumentStorage implements DocumentStorage {
   async get(key: string): Promise<Blob | null> {
     return localFiles.get(key) ?? null;
   }
+
+  async delete(key: string): Promise<void> {
+    localFiles.delete(key);
+  }
 }
 
 export class NetlifyBlobDocumentStorage implements DocumentStorage {
@@ -90,6 +95,10 @@ export class NetlifyBlobDocumentStorage implements DocumentStorage {
 
   async get(key: string): Promise<Blob | null> {
     return this.getStore().get(key, { type: "blob", consistency: "strong" });
+  }
+
+  async delete(key: string): Promise<void> {
+    await this.getStore().delete(key);
   }
 
   private getStore() {

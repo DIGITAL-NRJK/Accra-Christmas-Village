@@ -3,10 +3,12 @@ import { getDb } from "@/db/client";
 import {
   accessRequests,
   announcements,
+  auditLogs,
   documentRequirements,
   documents,
   events,
   heroSlides,
+  onboardingTasks,
   organizations,
   sponsors,
   stands,
@@ -15,7 +17,14 @@ import {
   zones,
 } from "@/db/schema";
 import { defaultHeroSlides } from "@/lib/hero-slides";
-import type { DocumentStatus, HeroSlide, ParticipantRole, Role, Sponsor } from "@/lib/types";
+import type {
+  DocumentStatus,
+  HeroSlide,
+  ParticipantRole,
+  Role,
+  Sponsor,
+  Vendor,
+} from "@/lib/types";
 
 const participantRoles: ParticipantRole[] = ["vendor", "sponsor", "partner"];
 const organizerOrganizationId = "org-festival-ops";
@@ -194,6 +203,109 @@ export async function updateUserRole(userId: string, role: Role) {
     .returning();
 
   return updatedUser ?? null;
+}
+
+export async function getUserDeletionContext(userId: string) {
+  if (!process.env.DATABASE_URL || !userId) {
+    return null;
+  }
+
+  const db = getDb();
+  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+
+  if (!user) {
+    return null;
+  }
+
+  const [organization, organizationUsers, organizationDocuments, vendorRows, sponsorRows] =
+    user.organizationId
+      ? await Promise.all([
+          db.select().from(organizations).where(eq(organizations.id, user.organizationId)).limit(1),
+          db.select({ id: users.id }).from(users).where(eq(users.organizationId, user.organizationId)),
+          db
+            .select({ storageKey: documents.storageKey })
+            .from(documents)
+            .where(eq(documents.organizationId, user.organizationId)),
+          db
+            .select({ standId: vendors.standId })
+            .from(vendors)
+            .where(eq(vendors.organizationId, user.organizationId)),
+          db
+            .select({ standId: sponsors.standId })
+            .from(sponsors)
+            .where(eq(sponsors.organizationId, user.organizationId)),
+        ])
+      : [[], [], [], [], []];
+  const organizationRecord = organization[0] ?? null;
+  const isParticipantOrganization =
+    organizationRecord?.type === "vendor" ||
+    organizationRecord?.type === "sponsor" ||
+    organizationRecord?.type === "partner";
+  const deleteOrganization = Boolean(
+    user.organizationId &&
+    isParticipantOrganization &&
+    organizationUsers.every((organizationUser) => organizationUser.id === user.id),
+  );
+
+  return {
+    deleteOrganization,
+    standIds: deleteOrganization
+      ? Array.from(new Set(
+          [...vendorRows, ...sponsorRows]
+            .map((participant) => participant.standId)
+            .filter((standId): standId is string => Boolean(standId)),
+        ))
+      : [],
+    storageKeys: deleteOrganization
+      ? organizationDocuments
+          .map((document) => document.storageKey)
+          .filter((storageKey): storageKey is string => Boolean(storageKey))
+      : [],
+    user,
+  };
+}
+
+export async function deleteUserAndRelatedData(userId: string) {
+  const context = await getUserDeletionContext(userId);
+
+  if (!context) {
+    return false;
+  }
+
+  const db = getDb();
+  const organizationIdToDelete =
+    context.deleteOrganization && context.user.organizationId
+      ? context.user.organizationId
+      : `preserve-${crypto.randomUUID()}`;
+  const accessRequestCondition = context.user.clerkUserId
+    ? or(
+        eq(accessRequests.clerkUserId, context.user.clerkUserId),
+        eq(accessRequests.email, context.user.email),
+      )
+    : eq(accessRequests.email, context.user.email);
+
+  await db.batch([
+    db
+      .update(documents)
+      .set({ reviewedByUserId: null })
+      .where(eq(documents.reviewedByUserId, context.user.id)),
+    db
+      .update(documents)
+      .set({ uploaderUserId: null })
+      .where(eq(documents.uploaderUserId, context.user.id)),
+    db.delete(auditLogs).where(eq(auditLogs.actorUserId, context.user.id)),
+    db.delete(accessRequests).where(accessRequestCondition),
+    db.delete(documents).where(eq(documents.organizationId, organizationIdToDelete)),
+    db.delete(onboardingTasks).where(eq(onboardingTasks.organizationId, organizationIdToDelete)),
+    db.delete(vendors).where(eq(vendors.organizationId, organizationIdToDelete)),
+    db.delete(sponsors).where(eq(sponsors.organizationId, organizationIdToDelete)),
+    db.delete(users).where(eq(users.id, context.user.id)),
+    db.delete(organizations).where(eq(organizations.id, organizationIdToDelete)),
+  ] as const);
+
+  await Promise.all(context.standIds.map((standId) => releaseStandIfEmpty(standId)));
+
+  return true;
 }
 
 export async function getOrganizationById(organizationId: string | null) {
@@ -803,6 +915,91 @@ export type SaveSponsorInput = Pick<
   contactEmail: string;
   contactPhone: string;
 };
+
+export type SaveVendorInput = Pick<
+  Vendor,
+  "approved" | "category" | "complianceStatus" | "onboardingStatus" | "standId" | "tradingName"
+> & {
+  contactEmail: string;
+  contactPhone: string;
+};
+
+export async function updateVendor(
+  vendorId: string,
+  organizationId: string,
+  input: SaveVendorInput,
+) {
+  if (!process.env.DATABASE_URL || !vendorId || !organizationId) {
+    console.info("Skipped vendor update because DATABASE_URL is not set or identifiers are missing.", {
+      organizationId,
+      vendorId,
+      input,
+    });
+    return;
+  }
+
+  const db = getDb();
+  const [currentVendor] = await db
+    .select({
+      organizationId: vendors.organizationId,
+      standId: vendors.standId,
+    })
+    .from(vendors)
+    .where(eq(vendors.id, vendorId))
+    .limit(1);
+
+  if (!currentVendor || currentVendor.organizationId !== organizationId) {
+    return false;
+  }
+
+  await db
+    .update(organizations)
+    .set({
+      name: input.tradingName,
+      contactEmail: input.contactEmail,
+      contactPhone: input.contactPhone,
+      status: input.approved ? "active" : "pending",
+    })
+    .where(eq(organizations.id, organizationId));
+
+  await db
+    .update(vendors)
+    .set({
+      approved: input.approved,
+      category: input.category,
+      complianceStatus: input.complianceStatus,
+      onboardingStatus: input.onboardingStatus,
+      standId: input.standId,
+      tradingName: input.tradingName,
+    })
+    .where(eq(vendors.id, vendorId));
+
+  if (currentVendor?.standId && currentVendor.standId !== input.standId) {
+    await releaseStandIfEmpty(currentVendor.standId);
+  }
+
+  if (input.standId) {
+    await db.update(stands).set({ status: "assigned" }).where(eq(stands.id, input.standId));
+  }
+
+  return true;
+}
+
+export async function deleteVendor(vendorId: string) {
+  if (!process.env.DATABASE_URL || !vendorId) {
+    return;
+  }
+
+  const db = getDb();
+  const [currentVendor] = await db
+    .select({ standId: vendors.standId })
+    .from(vendors)
+    .where(eq(vendors.id, vendorId))
+    .limit(1);
+
+  await db.delete(vendors).where(eq(vendors.id, vendorId));
+  await releaseStandIfEmpty(currentVendor?.standId ?? null);
+}
 
 async function createUniqueSponsorSlug(brandName: string, currentSponsorId?: string) {
   const db = getDb();
