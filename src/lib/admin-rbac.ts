@@ -6,6 +6,7 @@ import type { Role } from "@/lib/types";
 export type AdminSection =
   | "access"
   | "announcements"
+  | "analytics"
   | "audit"
   | "compliance"
   | "dashboard"
@@ -33,6 +34,7 @@ export const adminAccessRoles: Role[] = [
 export const adminNavItems: Array<NavItem & { section: AdminSection }> = [
   { href: "/admin", label: "Dashboard", section: "dashboard" },
   { href: "/admin/audit-log", label: "Audit log", section: "audit" },
+  { href: "/admin/analytics", label: "Analytics", section: "analytics" },
   { href: "/admin/users", label: "Users", section: "users" },
   { href: "/admin/preview", label: "Preview", section: "preview" },
   { href: "/admin/hero", label: "Hero", section: "hero" },
@@ -54,8 +56,8 @@ const allAdminSections = adminNavItems.map((item) => item.section);
 const adminSectionPermissions: Record<Role, AdminSection[]> = {
   admin: allAdminSections,
   super_admin: allAdminSections,
-  operations_manager: ["dashboard", "access", "vendors", "sponsors", "incidents", "notifications", "tickets", "stands"],
-  content_manager: ["dashboard", "hero", "programme", "announcements", "notifications"],
+  operations_manager: ["dashboard", "access", "vendors", "sponsors", "incidents", "notifications", "tickets", "stands", "analytics"],
+  content_manager: ["dashboard", "hero", "programme", "announcements", "notifications", "analytics"],
   compliance_manager: ["dashboard", "documents", "compliance", "notifications", "tickets"],
   stand_manager: ["dashboard", "stands"],
   partner: [],

@@ -379,6 +379,23 @@ export const supportMessages = pgTable(
   (table) => [index("support_messages_ticket_idx").on(table.ticketId, table.createdAt)],
 );
 
+export const trafficDaily = pgTable(
+  "traffic_daily",
+  {
+    id: text("id").primaryKey(),
+    day: date("day").notNull(),
+    path: text("path").notNull(),
+    device: text("device").notNull(),
+    source: text("source").notNull(),
+    views: integer("views").notNull().default(1),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("traffic_daily_dimensions_unique").on(table.day, table.path, table.device, table.source),
+    index("traffic_daily_day_idx").on(table.day),
+  ],
+);
+
 export const incidents = pgTable(
   "incidents",
   {

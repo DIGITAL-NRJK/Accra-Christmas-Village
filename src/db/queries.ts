@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, or } from "drizzle-orm";
+import { and, asc, desc, eq, gte, or, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import {
   accessRequests,
@@ -17,6 +17,7 @@ import {
   stands,
   supportMessages,
   supportTickets,
+  trafficDaily,
   users,
   vendors,
   zones,
@@ -837,6 +838,21 @@ export async function addSupportMessage(input: { ticketId: string; authorUserId:
 export async function updateSupportTicket(ticketId: string, input: { status: string; priority: string; assignedToUserId: string | null }) {
   if (!process.env.DATABASE_URL || !ticketId) return;
   await getDb().update(supportTickets).set({ ...input, updatedAt: new Date() }).where(eq(supportTickets.id, ticketId));
+}
+
+export async function incrementAnonymousPageView(input: { path: string; device: string; source: string }) {
+  if (!process.env.DATABASE_URL) return;
+  const db = getDb();
+  const day = new Date().toISOString().slice(0, 10);
+  await db.insert(trafficDaily).values({ id: crypto.randomUUID(), day, ...input, views: 1 }).onConflictDoUpdate({
+    target: [trafficDaily.day, trafficDaily.path, trafficDaily.device, trafficDaily.source],
+    set: { views: sql`${trafficDaily.views} + 1`, updatedAt: new Date() },
+  });
+}
+
+export async function listAnonymousTraffic(sinceDay: string) {
+  if (!process.env.DATABASE_URL) return [];
+  return getDb().select().from(trafficDaily).where(gte(trafficDaily.day, sinceDay)).orderBy(asc(trafficDaily.day));
 }
 
 export type CreateNotificationInput = {

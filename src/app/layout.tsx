@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Big_Shoulders, Geist_Mono, Instrument_Sans } from "next/font/google";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { AnonymousAnalytics } from "@/components/anonymous-analytics";
 import "./globals.css";
 
 const instrumentSans = Instrument_Sans({
@@ -67,6 +68,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col">
         <ClerkProvider>
+          <AnonymousAnalytics />
           <SiteHeader />
           <main className="flex-1">{children}</main>
           <SiteFooter />
