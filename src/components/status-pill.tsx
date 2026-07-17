@@ -32,6 +32,13 @@ const statusCopy: Record<string, string> = {
   expiring_soon: "Expiring soon",
   waiting: "Waiting",
   closed: "Closed",
+  planned: "Planned",
+  waiting_sponsor: "Waiting for sponsor",
+  received: "Received",
+  in_production: "In production",
+  delivered: "Delivered",
+  validated: "Validated",
+  overdue: "Overdue",
 };
 
 const statusClasses: Record<string, string> = {
@@ -62,18 +69,25 @@ const statusClasses: Record<string, string> = {
   expiring_soon: "border-orange-300 bg-orange-50 text-orange-800",
   waiting: "border-violet-300 bg-violet-50 text-violet-800",
   closed: "border-slate-300 bg-slate-50 text-slate-700",
+  planned: "border-slate-300 bg-slate-50 text-slate-700",
+  waiting_sponsor: "border-amber-300 bg-amber-50 text-amber-800",
+  received: "border-sky-300 bg-sky-50 text-sky-800",
+  in_production: "border-violet-300 bg-violet-50 text-violet-800",
+  delivered: "border-emerald-300 bg-emerald-50 text-emerald-800",
+  validated: "border-emerald-300 bg-emerald-50 text-emerald-800",
+  overdue: "border-rose-300 bg-rose-50 text-rose-800",
 };
 
 function StatusIcon({ status }: { status: string }) {
-  if (status === "approved" || status === "compliant" || status === "active" || status === "assigned" || status === "live" || status === "resolved") {
+  if (status === "approved" || status === "compliant" || status === "active" || status === "assigned" || status === "live" || status === "resolved" || status === "delivered" || status === "validated") {
     return <CheckCircle2 aria-hidden="true" className="size-3.5" />;
   }
 
-  if (status === "rejected" || status === "blocked" || status === "maintenance" || status === "cancelled" || status === "expired" || status === "open") {
+  if (status === "rejected" || status === "blocked" || status === "maintenance" || status === "cancelled" || status === "expired" || status === "open" || status === "overdue") {
     return <XCircle aria-hidden="true" className="size-3.5" />;
   }
 
-  if (status === "submitted" || status === "in_progress" || status === "confirmed" || status === "reserved" || status === "pending" || status === "scheduled" || status === "monitoring" || status === "expiring_soon") {
+  if (status === "submitted" || status === "in_progress" || status === "confirmed" || status === "reserved" || status === "pending" || status === "scheduled" || status === "monitoring" || status === "expiring_soon" || status === "waiting_sponsor" || status === "in_production") {
     return <Clock3 aria-hidden="true" className="size-3.5" />;
   }
 

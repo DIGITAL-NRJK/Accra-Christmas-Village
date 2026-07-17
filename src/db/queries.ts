@@ -14,6 +14,7 @@ import {
   onboardingTasks,
   organizations,
   sponsors,
+  sponsorCommitments,
   stands,
   supportMessages,
   supportTickets,
@@ -701,6 +702,7 @@ export async function listAdminData() {
       notifications: [],
       organizations: [],
       sponsors: [],
+      sponsorCommitments: [],
       stands: [],
       users: [],
       vendors: [],
@@ -722,6 +724,7 @@ export async function listAdminData() {
     notificationRows,
     organizationRows,
     sponsorRows,
+    sponsorCommitmentRows,
     standRows,
     userRows,
     vendorRows,
@@ -738,6 +741,7 @@ export async function listAdminData() {
     db.select().from(notifications).orderBy(desc(notifications.createdAt)),
     db.select().from(organizations).orderBy(asc(organizations.name)),
     db.select().from(sponsors).orderBy(asc(sponsors.brandName)),
+    db.select().from(sponsorCommitments).orderBy(asc(sponsorCommitments.dueDate), asc(sponsorCommitments.title)),
     db.select().from(stands).orderBy(asc(stands.code)),
     db.select().from(users).orderBy(asc(users.fullName)),
     db.select().from(vendors).orderBy(asc(vendors.tradingName)),
@@ -756,11 +760,46 @@ export async function listAdminData() {
     notifications: notificationRows,
     organizations: organizationRows,
     sponsors: sponsorRows,
+    sponsorCommitments: sponsorCommitmentRows,
     stands: standRows,
     users: userRows,
     vendors: vendorRows,
     zones: zoneRows,
   };
+}
+
+export type SaveSponsorCommitmentInput = {
+  sponsorId: string;
+  kind: string;
+  title: string;
+  category: string;
+  description: string;
+  ownerUserId: string | null;
+  dueDate: string | null;
+  status: string;
+  totalQuantity: number;
+  completedQuantity: number;
+  proofUrl: string | null;
+  notes: string;
+  visibleToSponsor: boolean;
+};
+
+export async function createSponsorCommitment(input: SaveSponsorCommitmentInput) {
+  if (!process.env.DATABASE_URL) return null;
+  const id = crypto.randomUUID();
+  await getDb().insert(sponsorCommitments).values({ id, ...input });
+  return id;
+}
+
+export async function updateSponsorCommitment(id: string, input: SaveSponsorCommitmentInput) {
+  if (!process.env.DATABASE_URL || !id) return false;
+  const [updated] = await getDb().update(sponsorCommitments).set({ ...input, updatedAt: new Date() }).where(eq(sponsorCommitments.id, id)).returning({ id: sponsorCommitments.id });
+  return Boolean(updated);
+}
+
+export async function deleteSponsorCommitment(id: string) {
+  if (!process.env.DATABASE_URL || !id) return;
+  await getDb().delete(sponsorCommitments).where(eq(sponsorCommitments.id, id));
 }
 
 export async function recordAuditLog(input: {

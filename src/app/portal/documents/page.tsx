@@ -46,7 +46,7 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
         title="Upload and track required documents"
         description="Business registration, food safety, insurance and staff list files move through missing, submitted, approved and rejected statuses."
       />
-      <PortalNav activeHref="/portal/documents" previewQuery={previewQuery} />
+      <PortalNav activeHref="/portal/documents" participantRole={role} previewQuery={previewQuery} />
       <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 pb-10 sm:px-6 lg:px-8">
         {requirements.map((requirement) => {
           const document = documents.find((candidate) => candidate.requirementId === requirement.id);

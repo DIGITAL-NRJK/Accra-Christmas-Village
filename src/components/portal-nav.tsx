@@ -1,4 +1,5 @@
 import { NavTabs } from "@/components/nav-tabs";
+import type { ParticipantRole } from "@/lib/types";
 
 const portalNav = [
   { href: "/portal", label: "Dashboard" },
@@ -11,15 +12,18 @@ const portalNav = [
   { href: "/portal/support", label: "Support" },
 ];
 
-export function PortalNav({ activeHref, previewQuery = "" }: { activeHref: string; previewQuery?: string }) {
+export function PortalNav({ activeHref, participantRole, previewQuery = "" }: { activeHref: string; participantRole?: ParticipantRole; previewQuery?: string }) {
+  const roleNav = participantRole === "sponsor"
+    ? [...portalNav, { href: "/portal/sponsor-benefits", label: "Benefits" }]
+    : portalNav;
   const items = previewQuery
     ? [
-        ...portalNav.map((item) => ({ ...item, href: `${item.href}${previewQuery}` })),
+        ...roleNav.map((item) => ({ ...item, href: `${item.href}${previewQuery}` })),
         ...(activeHref === "/portal"
           ? []
           : [{ href: "/admin/preview", label: "Exit preview" }]),
       ]
-    : portalNav;
+    : roleNav;
 
   return <NavTabs activeHref={activeHref} items={items} />;
 }

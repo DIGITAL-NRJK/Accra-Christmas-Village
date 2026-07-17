@@ -308,7 +308,7 @@ export default async function PortalPage({ searchParams }: PortalPageProps) {
         title={`${organization.name} ${config.title}`}
         description={config.description}
       />
-      <PortalNav activeHref="/portal" previewQuery={previewQuery} />
+      <PortalNav activeHref="/portal" participantRole={effectiveRole} previewQuery={previewQuery} />
       <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 pb-10 sm:px-6 lg:grid-cols-4 lg:px-8">
         <MetricCard
           detail="Approved checklist items."

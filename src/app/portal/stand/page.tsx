@@ -47,7 +47,7 @@ type StandPageProps = {
 
 export default async function StandPage({ searchParams }: StandPageProps) {
   const params = await searchParams;
-  const { organization, previewQuery } = await requirePortalContext(params);
+  const { organization, previewQuery, role } = await requirePortalContext(params);
   const placement = await getParticipantPlacement(organization.id);
   const stand = placement.stand;
   const zone = placement.zone;
@@ -59,7 +59,7 @@ export default async function StandPage({ searchParams }: StandPageProps) {
         title={stand ? `${stand.code} / ${stand.name}` : "Stand allocation"}
         description="Assigned location details and operating instructions for setup, deliveries, power, waste, branding and security."
       />
-      <PortalNav activeHref="/portal/stand" previewQuery={previewQuery} />
+      <PortalNav activeHref="/portal/stand" participantRole={role} previewQuery={previewQuery} />
       <section className="mx-auto grid w-full max-w-6xl gap-6 px-4 pb-10 sm:px-6 lg:grid-cols-[0.75fr_1.25fr] lg:px-8">
         <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <p className="text-sm font-semibold uppercase tracking-[0.14em] text-acv-clay">Assigned stand</p>
