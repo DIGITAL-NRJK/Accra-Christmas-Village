@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import {
   deleteVendor,
+  getVendorById,
+  recordAuditLog,
   updateVendor,
   type SaveVendorInput,
 } from "@/db/queries";
@@ -76,7 +78,7 @@ export async function updateVendorAction(
   _previousState: VendorActionState,
   formData: FormData,
 ): Promise<VendorActionState> {
-  await requireAdminSection("vendors");
+  const session = await requireAdminSection("vendors");
 
   const vendorId = textValue(formData, "vendorId");
   const organizationId = textValue(formData, "organizationId");
@@ -90,11 +92,13 @@ export async function updateVendorAction(
     return errorState(input.error);
   }
 
+  const previous = await getVendorById(vendorId);
   const updated = await updateVendor(vendorId, organizationId, input);
 
   if (!updated) {
     return errorState("The vendor no longer exists or does not match this organization.");
   }
+  await recordAuditLog({ action: "vendor.updated", actorUserId: session.user?.id ?? null, entityId: vendorId, entityType: "vendor", metadata: { before: previous, after: input } });
 
   revalidateVendorPaths();
 
@@ -102,7 +106,7 @@ export async function updateVendorAction(
 }
 
 export async function deleteVendorAction(formData: FormData) {
-  await requireAdminSection("vendors");
+  const session = await requireAdminSection("vendors");
 
   const vendorId = textValue(formData, "vendorId");
 
@@ -110,6 +114,8 @@ export async function deleteVendorAction(formData: FormData) {
     return;
   }
 
+  const previous = await getVendorById(vendorId);
   await deleteVendor(vendorId);
+  await recordAuditLog({ action: "vendor.deleted", actorUserId: session.user?.id ?? null, entityId: vendorId, entityType: "vendor", metadata: { before: previous } });
   revalidateVendorPaths();
 }

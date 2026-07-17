@@ -1,10 +1,11 @@
-import { and, asc, desc, eq, gte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, or, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import {
   accessRequests,
   announcements,
   auditLogs,
   documentRequirements,
+  documentVersions,
   documents,
   events,
   heroSlides,
@@ -12,6 +13,7 @@ import {
   notificationReads,
   notifications,
   onboardingTasks,
+  operationalTasks,
   organizations,
   sponsors,
   sponsorCommitments,
@@ -93,13 +95,22 @@ export async function saveDocumentMetadata(input: SaveDocumentMetadataInput) {
   }
 
   const db = getDb();
+  const [existing] = await db
+    .select({ id: documents.id, version: documents.version })
+    .from(documents)
+    .where(and(eq(documents.organizationId, input.organizationId), eq(documents.requirementId, input.requirementId)))
+    .limit(1);
+  const documentId = existing?.id ?? input.id;
+  const version = (existing?.version ?? 0) + 1;
+  const submittedAt = new Date();
 
   await db
     .insert(documents)
     .values({
       ...input,
       status: "submitted",
-      submittedAt: new Date(),
+      submittedAt,
+      version,
     })
     .onConflictDoUpdate({
       target: [documents.organizationId, documents.requirementId],
@@ -111,13 +122,37 @@ export async function saveDocumentMetadata(input: SaveDocumentMetadataInput) {
         storageKey: input.storageKey,
         storageUrl: input.storageUrl,
         status: "submitted",
-        submittedAt: new Date(),
+        submittedAt,
         reviewedAt: null,
         reviewedByUserId: null,
         rejectionReason: null,
         reviewerNote: null,
+        internalNote: null,
+        issuedAt: null,
+        expiresAt: null,
+        replacementRequestedAt: null,
+        reminderSentAt: null,
+        version,
       },
     });
+
+  await db.insert(documentVersions).values({
+    id: crypto.randomUUID(),
+    documentId,
+    organizationId: input.organizationId,
+    requirementId: input.requirementId,
+    uploaderUserId: input.uploaderUserId,
+    version,
+    fileName: input.fileName,
+    fileType: input.fileType,
+    fileSize: input.fileSize,
+    storageKey: input.storageKey,
+    status: "submitted",
+    submittedAt,
+  });
+
+  await syncOrganizationCompliance(input.organizationId);
+  return { documentId, version };
 }
 
 export async function getDocumentById(documentId: string) {
@@ -141,6 +176,8 @@ export async function reviewDocument(
   reviewerUserId: string,
   reviewerNote: string,
   expiresAt: Date | null = null,
+  internalNote: string | null = null,
+  issuedAt: Date | null = null,
 ) {
   if (!process.env.DATABASE_URL) {
     console.info("Skipped Neon document review because DATABASE_URL is not set.", {
@@ -149,6 +186,8 @@ export async function reviewDocument(
       reviewerUserId,
       reviewerNote,
       expiresAt,
+      internalNote,
+      issuedAt,
     });
     return;
   }
@@ -164,8 +203,150 @@ export async function reviewDocument(
       reviewedAt: new Date(),
       reviewedByUserId: reviewerUserId,
       expiresAt: status === "approved" ? expiresAt : null,
+      issuedAt: status === "approved" ? issuedAt : null,
+      internalNote,
+      replacementRequestedAt: status === "rejected" ? new Date() : null,
+      reminderSentAt: null,
     })
     .where(eq(documents.id, documentId));
+
+  const [document] = await db
+    .select({ organizationId: documents.organizationId, version: documents.version })
+    .from(documents)
+    .where(eq(documents.id, documentId))
+    .limit(1);
+
+  if (document) {
+    await db
+      .update(documentVersions)
+      .set({
+        status,
+        reviewerNote,
+        internalNote,
+        issuedAt: status === "approved" ? issuedAt : null,
+        expiresAt: status === "approved" ? expiresAt : null,
+        reviewedAt: new Date(),
+        reviewedByUserId: reviewerUserId,
+      })
+      .where(and(eq(documentVersions.documentId, documentId), eq(documentVersions.version, document.version)));
+    await syncOrganizationCompliance(document.organizationId);
+  }
+}
+
+export async function getDocumentVersionById(versionId: string) {
+  if (!process.env.DATABASE_URL || !versionId) return null;
+
+  const db = getDb();
+  const [version] = await db
+    .select()
+    .from(documentVersions)
+    .where(eq(documentVersions.id, versionId))
+    .limit(1);
+
+  return version ?? null;
+}
+
+export async function syncOrganizationCompliance(organizationId: string) {
+  if (!process.env.DATABASE_URL || !organizationId) return "not_started" as const;
+
+  const db = getDb();
+  const [organization] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, organizationId))
+    .limit(1);
+
+  if (!organization || organization.type === "organizer") return "not_started" as const;
+
+  const [vendor] = organization.type === "vendor"
+    ? await db.select().from(vendors).where(eq(vendors.organizationId, organizationId)).limit(1)
+    : [];
+  const requirementRows = await db
+    .select()
+    .from(documentRequirements)
+    .where(eq(documentRequirements.organizationType, organization.type));
+  const required = requirementRows.filter(
+    (requirement) =>
+      requirement.required &&
+      (requirement.appliesToCategories.length === 0 ||
+        requirement.appliesToCategories.includes(vendor?.category ?? "")),
+  );
+  const documentRows = await db
+    .select()
+    .from(documents)
+    .where(eq(documents.organizationId, organizationId));
+  const now = new Date();
+  const statuses = required.map((requirement) => {
+    const document = documentRows.find((item) => item.requirementId === requirement.id);
+    if (
+      document?.status === "rejected" ||
+      (document?.status === "approved" && document.expiresAt && document.expiresAt < now)
+    ) {
+      return "blocked";
+    }
+    return document?.status ?? "missing";
+  });
+  const complianceStatus = statuses.some((status) => status === "blocked")
+    ? "blocked"
+    : statuses.length > 0 && statuses.every((status) => status === "approved")
+      ? "compliant"
+      : statuses.some((status) => status === "submitted" || status === "approved")
+        ? "in_progress"
+        : "not_started";
+
+  await db.update(organizations).set({ complianceStatus }).where(eq(organizations.id, organizationId));
+  if (vendor) {
+    await db
+      .update(vendors)
+      .set({
+        complianceStatus,
+        ...(complianceStatus === "blocked" ? { approved: false } : {}),
+      })
+      .where(eq(vendors.id, vendor.id));
+  }
+
+  return complianceStatus;
+}
+
+export async function processDocumentExpiryReminders(createdByUserId: string | null = null) {
+  if (!process.env.DATABASE_URL) return { blocked: 0, reminded: 0 };
+
+  const db = getDb();
+  const now = new Date();
+  const threshold = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const expiring = await db
+    .select()
+    .from(documents)
+    .where(and(eq(documents.status, "approved"), lte(documents.expiresAt, threshold)));
+  const affectedOrganizations = new Set<string>();
+  let reminded = 0;
+
+  for (const document of expiring) {
+    if (!document.expiresAt) continue;
+    affectedOrganizations.add(document.organizationId);
+    if (!document.reminderSentAt) {
+      const expired = document.expiresAt < now;
+      await createNotification({
+        actionHref: "/portal/documents",
+        audience: "all",
+        body: `${document.fileName ?? "A required document"} ${expired ? "has expired" : "expires soon"}. Upload a replacement to remain compliant.`,
+        createdByUserId,
+        expiresAt: null,
+        organizationId: document.organizationId,
+        title: expired ? "Document expired" : "Document expiring soon",
+        type: expired ? "critical" : "warning",
+      });
+      await db.update(documents).set({ reminderSentAt: now }).where(eq(documents.id, document.id));
+      reminded += 1;
+    }
+  }
+
+  let blocked = 0;
+  for (const organizationId of affectedOrganizations) {
+    if (await syncOrganizationCompliance(organizationId) === "blocked") blocked += 1;
+  }
+
+  return { blocked, reminded };
 }
 
 export async function findUserByClerkIdentity(clerkUserId: string, email: string | null) {
@@ -215,6 +396,12 @@ export async function updateUserRole(userId: string, role: Role) {
     .returning();
 
   return updatedUser ?? null;
+}
+
+export async function getUserById(userId: string) {
+  if (!process.env.DATABASE_URL || !userId) return null;
+  const [user] = await getDb().select().from(users).where(eq(users.id, userId)).limit(1);
+  return user ?? null;
 }
 
 export async function getUserDeletionContext(userId: string) {
@@ -710,11 +897,13 @@ export async function listAdminData() {
       announcements: [],
       auditLogs: [],
       documents: [],
+      documentVersions: [],
       documentRequirements: [],
       events: [],
       heroSlides: defaultHeroSlides,
       incidents: defaultIncidents,
       notifications: [],
+      operationalTasks: [],
       organizations: [],
       sponsors: [],
       sponsorCommitments: [],
@@ -732,11 +921,13 @@ export async function listAdminData() {
     announcementRows,
     auditLogRows,
     documentRows,
+    documentVersionRows,
     documentRequirementRows,
     eventRows,
     heroSlideRows,
     incidentRows,
     notificationRows,
+    operationalTaskRows,
     organizationRows,
     sponsorRows,
     sponsorCommitmentRows,
@@ -749,11 +940,13 @@ export async function listAdminData() {
     db.select().from(announcements).orderBy(desc(announcements.createdAt)),
     db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)),
     db.select().from(documents).orderBy(desc(documents.createdAt)),
+    db.select().from(documentVersions).orderBy(desc(documentVersions.submittedAt)),
     db.select().from(documentRequirements).orderBy(asc(documentRequirements.sortOrder)),
     db.select().from(events).orderBy(asc(events.day), asc(events.startsAt)),
     db.select(heroSlideColumns).from(heroSlides).orderBy(asc(heroSlides.sortOrder), desc(heroSlides.createdAt)),
     db.select().from(incidents).orderBy(desc(incidents.occurredAt)),
     db.select().from(notifications).orderBy(desc(notifications.createdAt)),
+    db.select().from(operationalTasks).orderBy(asc(operationalTasks.dueAt)),
     db.select().from(organizations).orderBy(asc(organizations.name)),
     db.select().from(sponsors).orderBy(asc(sponsors.brandName)),
     db.select().from(sponsorCommitments).orderBy(asc(sponsorCommitments.dueDate), asc(sponsorCommitments.title)),
@@ -768,11 +961,13 @@ export async function listAdminData() {
     announcements: announcementRows,
     auditLogs: auditLogRows,
     documents: documentRows,
+    documentVersions: documentVersionRows,
     documentRequirements: documentRequirementRows,
     events: eventRows,
     heroSlides: heroSlideRows,
     incidents: incidentRows,
     notifications: notificationRows,
+    operationalTasks: operationalTaskRows,
     organizations: organizationRows,
     sponsors: sponsorRows,
     sponsorCommitments: sponsorCommitmentRows,
@@ -1261,6 +1456,12 @@ export async function updateVendor(
   return true;
 }
 
+export async function getVendorById(vendorId: string) {
+  if (!process.env.DATABASE_URL || !vendorId) return null;
+  const [vendor] = await getDb().select().from(vendors).where(eq(vendors.id, vendorId)).limit(1);
+  return vendor ?? null;
+}
+
 export async function deleteVendor(vendorId: string) {
   if (!process.env.DATABASE_URL || !vendorId) {
     return;
@@ -1320,14 +1521,14 @@ async function releaseStandIfEmpty(standId: string | null) {
 }
 
 export async function createSponsor(input: SaveSponsorInput) {
+  const sponsorId = crypto.randomUUID();
   if (!process.env.DATABASE_URL) {
     console.info("Skipped sponsor creation because DATABASE_URL is not set.", input);
-    return;
+    return sponsorId;
   }
 
   const db = getDb();
   const organizationId = crypto.randomUUID();
-  const sponsorId = crypto.randomUUID();
   const slug = await createUniqueSponsorSlug(input.brandName);
 
   await db.insert(organizations).values({
@@ -1355,6 +1556,13 @@ export async function createSponsor(input: SaveSponsorInput) {
   if (input.standId) {
     await db.update(stands).set({ status: "assigned" }).where(eq(stands.id, input.standId));
   }
+  return sponsorId;
+}
+
+export async function getSponsorById(sponsorId: string) {
+  if (!process.env.DATABASE_URL || !sponsorId) return null;
+  const [sponsor] = await getDb().select().from(sponsors).where(eq(sponsors.id, sponsorId)).limit(1);
+  return sponsor ?? null;
 }
 
 export async function updateSponsor(sponsorId: string, organizationId: string, input: SaveSponsorInput) {
@@ -1499,6 +1707,58 @@ export async function deleteIncident(incidentId: string) {
   await db.delete(incidents).where(eq(incidents.id, incidentId));
 }
 
+export type SaveOperationalTaskInput = {
+  assignedToUserId: string | null;
+  createdByUserId: string | null;
+  description: string;
+  dueAt: Date;
+  priority: string;
+  proofContentType?: string | null;
+  proofFileName?: string | null;
+  proofStorageKey?: string | null;
+  standId: string | null;
+  status: string;
+  taskType: string;
+  title: string;
+  zoneId: string | null;
+};
+
+export async function createOperationalTask(input: SaveOperationalTaskInput, id = crypto.randomUUID()) {
+  if (!process.env.DATABASE_URL) return id;
+  await getDb().insert(operationalTasks).values({ ...input, id });
+  return id;
+}
+
+export async function getOperationalTaskById(taskId: string) {
+  if (!process.env.DATABASE_URL || !taskId) return null;
+  const [task] = await getDb().select().from(operationalTasks).where(eq(operationalTasks.id, taskId)).limit(1);
+  return task ?? null;
+}
+
+export async function updateOperationalTaskStatus(
+  taskId: string,
+  status: string,
+  proof: { proofContentType: string; proofFileName: string; proofStorageKey: string } | null,
+) {
+  if (!process.env.DATABASE_URL || !taskId) return false;
+  const [updated] = await getDb()
+    .update(operationalTasks)
+    .set({
+      status,
+      ...(proof ?? {}),
+      completedAt: status === "done" ? new Date() : null,
+      updatedAt: new Date(),
+    })
+    .where(eq(operationalTasks.id, taskId))
+    .returning({ id: operationalTasks.id });
+  return Boolean(updated);
+}
+
+export async function deleteOperationalTask(taskId: string) {
+  if (!process.env.DATABASE_URL || !taskId) return;
+  await getDb().delete(operationalTasks).where(eq(operationalTasks.id, taskId));
+}
+
 export type CreateProgrammeItemInput = {
   title: string;
   day: string;
@@ -1589,6 +1849,12 @@ export async function updateHeroSlide(slideId: string, input: SaveHeroSlideInput
     });
 }
 
+export async function getHeroSlideById(slideId: string) {
+  if (!process.env.DATABASE_URL || !slideId) return null;
+  const [slide] = await getDb().select(heroSlideColumns).from(heroSlides).where(eq(heroSlides.id, slideId)).limit(1);
+  return slide ?? null;
+}
+
 export async function updateHeroSlidePublication(slideId: string, published: boolean) {
   if (!process.env.DATABASE_URL || !slideId) {
     return;
@@ -1613,17 +1879,25 @@ export async function deleteHeroSlide(slideId: string) {
 }
 
 export async function createProgrammeItem(input: CreateProgrammeItemInput) {
+  const eventId = crypto.randomUUID();
   if (!process.env.DATABASE_URL) {
     console.info("Skipped programme item creation because DATABASE_URL is not set.", input);
-    return;
+    return eventId;
   }
 
   const db = getDb();
 
   await db.insert(events).values({
-    id: crypto.randomUUID(),
+    id: eventId,
     ...input,
   });
+  return eventId;
+}
+
+export async function getProgrammeItemById(eventId: string) {
+  if (!process.env.DATABASE_URL || !eventId) return null;
+  const [event] = await getDb().select().from(events).where(eq(events.id, eventId)).limit(1);
+  return event ?? null;
 }
 
 export async function updateProgrammePublication(eventId: string, published: boolean) {

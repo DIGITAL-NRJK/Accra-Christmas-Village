@@ -5,7 +5,9 @@ import { isClerkAPIResponseError } from "@clerk/nextjs/errors";
 import { revalidatePath } from "next/cache";
 import {
   deleteUserAndRelatedData,
+  getUserById,
   getUserDeletionContext,
+  recordAuditLog,
   updateUserRole,
 } from "@/db/queries";
 import { requireAnyRole } from "@/lib/auth";
@@ -43,7 +45,9 @@ export async function updateUserRoleAction(formData: FormData) {
     return;
   }
 
+  const previous = await getUserById(userId);
   await updateUserRole(userId, role);
+  await recordAuditLog({ action: "user.role_changed", actorUserId: session.user?.id ?? null, entityId: userId, entityType: "user", metadata: { before: previous?.role ?? null, after: role } });
   revalidateUserPaths();
 }
 
@@ -83,6 +87,7 @@ export async function deleteUserAction(
   try {
     await Promise.all(context.storageKeys.map((storageKey) => documentStorage.delete(storageKey)));
     await deleteUserAndRelatedData(userId);
+    await recordAuditLog({ action: "user.deleted", actorUserId: session.user?.id ?? null, entityId: userId, entityType: "user", metadata: { email: context.user.email, role: context.user.role } });
   } catch (error) {
     console.error("Failed to delete user data.", { error, userId });
     return {

@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import {
   createProgrammeItem,
   deleteProgrammeItem,
+  getProgrammeItemById,
+  recordAuditLog,
   updateProgrammeItem,
   updateProgrammePublication,
   type SaveProgrammeItemInput,
@@ -71,7 +73,7 @@ export async function createProgrammeItemAction(
   _previousState: ProgrammeItemActionState,
   formData: FormData,
 ): Promise<ProgrammeItemActionState> {
-  await requireAdminSection("programme");
+  const session = await requireAdminSection("programme");
 
   const input = programmeItemInput(formData);
 
@@ -79,7 +81,8 @@ export async function createProgrammeItemAction(
     return getErrorState(input.error);
   }
 
-  await createProgrammeItem(input);
+  const eventId = await createProgrammeItem(input);
+  await recordAuditLog({ action: "programme_item.created", actorUserId: session.user?.id ?? null, entityId: eventId, entityType: "programme_item", metadata: { after: input } });
   revalidateProgrammePaths();
 
   return {
@@ -92,7 +95,7 @@ export async function updateProgrammeItemAction(
   _previousState: ProgrammeItemActionState,
   formData: FormData,
 ): Promise<ProgrammeItemActionState> {
-  await requireAdminSection("programme");
+  const session = await requireAdminSection("programme");
 
   const eventId = textValue(formData, "eventId");
   const input = programmeItemInput(formData);
@@ -105,7 +108,9 @@ export async function updateProgrammeItemAction(
     return getErrorState(input.error);
   }
 
+  const previous = await getProgrammeItemById(eventId);
   await updateProgrammeItem(eventId, input);
+  await recordAuditLog({ action: "programme_item.updated", actorUserId: session.user?.id ?? null, entityId: eventId, entityType: "programme_item", metadata: { before: previous, after: input } });
   revalidateProgrammePaths();
 
   return {
@@ -115,20 +120,24 @@ export async function updateProgrammeItemAction(
 }
 
 export async function updateProgrammePublicationAction(formData: FormData) {
-  await requireAdminSection("programme");
+  const session = await requireAdminSection("programme");
 
   const eventId = String(formData.get("eventId") ?? "");
   const published = isPublishedValue(formData);
 
+  const previous = await getProgrammeItemById(eventId);
   await updateProgrammePublication(eventId, published);
+  await recordAuditLog({ action: "programme_item.publication_changed", actorUserId: session.user?.id ?? null, entityId: eventId, entityType: "programme_item", metadata: { before: previous?.published ?? null, after: published } });
   revalidateProgrammePaths();
 }
 
 export async function deleteProgrammeItemAction(formData: FormData) {
-  await requireAdminSection("programme");
+  const session = await requireAdminSection("programme");
 
   const eventId = textValue(formData, "eventId");
 
+  const previous = await getProgrammeItemById(eventId);
   await deleteProgrammeItem(eventId);
+  await recordAuditLog({ action: "programme_item.deleted", actorUserId: session.user?.id ?? null, entityId: eventId, entityType: "programme_item", metadata: { before: previous } });
   revalidateProgrammePaths();
 }

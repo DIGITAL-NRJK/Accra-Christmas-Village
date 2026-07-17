@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   Check,
+  CalendarClock,
   ChevronRight,
   Download,
   Eye,
@@ -12,7 +13,7 @@ import {
 import { AdminNav } from "@/components/admin-nav";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
-import { approveDocument, rejectDocument } from "@/app/admin/documents/actions";
+import { approveDocument, rejectDocument, sendExpirationRemindersAction } from "@/app/admin/documents/actions";
 import { listAdminData } from "@/db/queries";
 import { requireAdminSection } from "@/lib/admin-rbac";
 import type { DocumentStatus, Organization } from "@/lib/types";
@@ -88,14 +89,18 @@ function formatDocumentDate(value: Date | string | null | undefined) {
 
 function reviewForms(documentId: string) {
   return (
-    <div className="flex flex-wrap gap-2">
-      <form action={approveDocument}>
+    <div className="grid gap-3 lg:grid-cols-2">
+      <form action={approveDocument} className="grid gap-2 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
         <input name="documentId" type="hidden" value={documentId} />
-        <input name="reviewerNote" type="hidden" value="Approved for event operations." />
+        <textarea className="min-h-16 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs" defaultValue="Approved for event operations." name="participantMessage" placeholder="Message visible to participant" />
+        <textarea className="min-h-16 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs" name="internalNote" placeholder="Internal note (organizers only)" />
+        <div className="grid grid-cols-2 gap-2">
+          <label className="grid gap-1 text-xs font-bold text-slate-600">Issued on<input className="rounded-md border border-slate-200 bg-white px-2 py-1.5" name="issuedAt" type="date" /></label>
         <label className="grid gap-1 text-xs font-bold text-slate-600">
           Valid until
           <input className="rounded-md border border-slate-200 bg-white px-2 py-1.5" name="expiresAt" type="date" />
         </label>
+        </div>
         <button
           className="inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-2 text-xs font-bold text-white transition hover:bg-emerald-800"
           title="Approve document"
@@ -104,9 +109,10 @@ function reviewForms(documentId: string) {
           Approve
         </button>
       </form>
-      <form action={rejectDocument}>
+      <form action={rejectDocument} className="grid gap-2 rounded-lg border border-rose-200 bg-rose-50/50 p-3">
         <input name="documentId" type="hidden" value={documentId} />
-        <input name="reviewerNote" type="hidden" value="Please resubmit with updated validity dates." />
+        <textarea className="min-h-16 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs" defaultValue="Please resubmit with updated validity dates." name="participantMessage" placeholder="Replacement request visible to participant" />
+        <textarea className="min-h-16 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs" name="internalNote" placeholder="Internal note (organizers only)" />
         <button
           className="inline-flex items-center gap-1.5 rounded-md bg-rose-700 px-3 py-2 text-xs font-bold text-white transition hover:bg-rose-800"
           title="Reject document"
@@ -138,7 +144,7 @@ function participantHref(participantId: string, filters: { status: string; type:
 export default async function AdminDocumentsPage({ searchParams }: AdminDocumentsPageProps) {
   await requireAdminSection("documents");
 
-  const { documentRequirements, documents, organizations } = await listAdminData();
+  const { documentRequirements, documents, documentVersions, organizations, vendors } = await listAdminData();
   const params = await searchParams;
   const participantFilter = getFilterValue(params.participant);
   const typeFilter = getFilterValue(params.type);
@@ -152,7 +158,12 @@ export default async function AdminDocumentsPage({ searchParams }: AdminDocument
   const participantCards = participants
     .map((organization) => {
       const allRows = documentRequirements
-        .filter((requirement) => requirement.organizationType === organization.type)
+        .filter((requirement) => {
+          if (requirement.organizationType !== organization.type) return false;
+          if (organization.type !== "vendor" || requirement.appliesToCategories.length === 0) return true;
+          const category = vendors.find((vendor) => vendor.organizationId === organization.id)?.category;
+          return Boolean(category && requirement.appliesToCategories.includes(category));
+        })
         .map((requirement) => {
           const document = documents.find(
             (candidate) =>
@@ -258,6 +269,11 @@ export default async function AdminDocumentsPage({ searchParams }: AdminDocument
       </section>
 
       <section className="mx-auto w-full max-w-6xl px-4 pb-5 sm:px-6 lg:px-8">
+        <form action={sendExpirationRemindersAction} className="mb-3 flex justify-end">
+          <button className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-900">
+            <CalendarClock className="size-4" /> Run expiry reminders
+          </button>
+        </form>
         <form
           className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[1fr_1fr_0.8fr_0.8fr_auto_auto]"
           method="get"
@@ -420,6 +436,24 @@ export default async function AdminDocumentsPage({ searchParams }: AdminDocument
                           <p className="mt-3 rounded-md bg-white px-3 py-2 text-sm text-slate-700">
                             {document.reviewerNote}
                           </p>
+                        ) : null}
+                        {document?.internalNote ? (
+                          <p className="mt-2 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                            Internal: {document.internalNote}
+                          </p>
+                        ) : null}
+                        {document ? (
+                          <details className="mt-3 rounded-md bg-white p-3">
+                            <summary className="cursor-pointer text-sm font-bold text-acv-ink">Version history ({document.version})</summary>
+                            <div className="mt-2 grid gap-2">
+                              {documentVersions.filter((version) => version.documentId === document.id).map((version) => (
+                                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600" key={version.id}>
+                                  <span>v{version.version} · {version.fileName} · {formatDocumentDate(version.submittedAt)}</span>
+                                  <Link className="font-bold text-acv-palm" href={`/document-versions/${version.id}/download`}>Download</Link>
+                                </div>
+                              ))}
+                            </div>
+                          </details>
                         ) : null}
                       </div>
 

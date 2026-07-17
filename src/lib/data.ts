@@ -483,6 +483,7 @@ export const documentRequirements: DocumentRequirement[] = [
     name: "Food safety certificate",
     description: "Required for food, drink and sampling vendors.",
     required: true,
+    appliesToCategories: ["Food & drinks"],
     sortOrder: 2,
   },
   {
