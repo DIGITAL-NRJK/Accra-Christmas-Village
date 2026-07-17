@@ -1,11 +1,14 @@
-import { listAdminData } from "@/db/queries";
+import { listAccreditationData, listAdminData } from "@/db/queries";
 import type { Role } from "@/lib/types";
 
 export type ReportRow = { detail: string; label: string; value: string | number };
 export type ReportSection = { id: string; title: string; rows: ReportRow[] };
 
 export async function buildRoleReports(role: Role): Promise<ReportSection[]> {
-  const data = await listAdminData();
+  const [data, accreditationData] = await Promise.all([listAdminData(), listAccreditationData()]);
+  const now = new Date();
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
   const participants = data.organizations.filter((organization) => organization.type !== "organizer");
   const requiredDocuments = data.documentRequirements.filter((requirement) => requirement.required);
   const requiredSlots = participants.flatMap((organization) =>
@@ -67,10 +70,20 @@ export async function buildRoleReports(role: Role): Promise<ReportSection[]> {
       { detail: "Visible homepage slides.", label: "Hero slides", value: data.heroSlides.filter((slide) => slide.published).length },
     ],
   };
+  const accreditations: ReportSection = {
+    id: "accreditations",
+    title: "Accreditation control",
+    rows: [
+      { detail: "People registered across participant and internal event teams.", label: "Declared people", value: accreditationData.staffMembers.length },
+      { detail: "Issued or active badges that have not expired or been revoked.", label: "Valid badges", value: accreditationData.accreditations.filter((badge) => !["revoked", "expired"].includes(badge.status) && badge.validUntil >= now).length },
+      { detail: "Entry and exit checks recorded since midnight.", label: "Checks today", value: accreditationData.scans.filter((scan) => scan.createdAt >= today).length },
+      { detail: "Rejected checks since midnight, including revoked and expired badges.", label: "Denied today", value: accreditationData.scans.filter((scan) => scan.createdAt >= today && scan.outcome === "denied").length },
+    ],
+  };
 
   if (role === "compliance_manager") return [onboarding, vendors];
-  if (role === "stand_manager") return [stands];
+  if (role === "stand_manager") return [stands, accreditations];
   if (role === "content_manager") return [content, sponsors];
-  if (role === "operations_manager") return [onboarding, stands, vendors, sponsors, incidents];
-  return [onboarding, stands, vendors, sponsors, incidents, content];
+  if (role === "operations_manager") return [onboarding, stands, vendors, sponsors, accreditations, incidents];
+  return [onboarding, stands, vendors, sponsors, accreditations, incidents, content];
 }

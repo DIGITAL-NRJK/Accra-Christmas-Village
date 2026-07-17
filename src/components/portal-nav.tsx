@@ -6,6 +6,7 @@ const portalNav = [
   { href: "/portal/onboarding", label: "Onboarding" },
   { href: "/portal/documents", label: "Documents" },
   { href: "/portal/profile", label: "Profile" },
+  { href: "/portal/staff", label: "Staff & badges" },
   { href: "/portal/stand", label: "Stand" },
   { href: "/portal/messages", label: "Messages" },
   { href: "/portal/notifications", label: "Notifications" },

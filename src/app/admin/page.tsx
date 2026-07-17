@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   CalendarClock,
   CheckCircle2,
+  IdCard,
   FileClock,
   FileQuestion,
   Gift,
@@ -18,7 +19,7 @@ import { AdminNav } from "@/components/admin-nav";
 import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
-import { listAdminData } from "@/db/queries";
+import { listAccreditationData, listAdminData } from "@/db/queries";
 import { canAccessAdminSection, requireAdminSection, type AdminSection } from "@/lib/admin-rbac";
 import type { Role } from "@/lib/types";
 
@@ -62,7 +63,7 @@ const dashboardCopy: Partial<Record<Role, { eyebrow: string; title: string; desc
 export default async function AdminPage() {
   const session = await requireAdminSection("dashboard");
 
-  const {
+  const [{
     accessRequests,
     announcements,
     documents,
@@ -75,7 +76,7 @@ export default async function AdminPage() {
     stands,
     users,
     vendors,
-  } = await listAdminData();
+  }, accreditationData] = await Promise.all([listAdminData(), listAccreditationData()]);
   const copy = dashboardCopy[session.role] ?? dashboardCopy.admin!;
   const sectionHref = (section: AdminSection, href: string) => (canAccessAdminSection(session.role, section) ? href : undefined);
   const pendingAccessRequests = accessRequests.filter((request) => request.status === "pending").length;
@@ -105,6 +106,7 @@ export default async function AdminPage() {
   const organizationNames = new Map(organizations.map((organization) => [organization.id, organization.name]));
   const documentQueue = documents.filter((document) => document.status === "submitted" || document.status === "rejected");
   const metricCards = [
+    { detail: "Valid, non-revoked event credentials.", href: sectionHref("accreditations", "/admin/accreditations"), icon: IdCard, label: "Valid badges", value: accreditationData.accreditations.filter((badge) => !["revoked", "expired"].includes(badge.status) && badge.validUntil >= new Date()).length },
     { detail: "Accounts with portal or admin access.", href: sectionHref("users", "/admin/users"), icon: Users, label: "Users", value: users.length },
     { detail: "Awaiting organizer approval.", href: sectionHref("access", "/admin/access-requests?status=pending"), icon: Handshake, label: "Access requests", value: pendingAccessRequests },
     { detail: "Active and pending vendor records.", href: sectionHref("vendors", "/admin/vendors"), icon: Store, label: "Vendors", value: vendors.length },

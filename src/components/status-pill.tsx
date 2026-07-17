@@ -15,6 +15,9 @@ const statusCopy: Record<string, string> = {
   compliant: "Compliant",
   blocked: "Blocked",
   active: "Active",
+  inactive: "Inactive",
+  issued: "Issued",
+  revoked: "Revoked",
   pending: "Pending",
   confirmed: "Confirmed",
   prospect: "Prospect",
@@ -52,6 +55,9 @@ const statusClasses: Record<string, string> = {
   compliant: "border-emerald-300 bg-emerald-50 text-emerald-800",
   blocked: "border-rose-300 bg-rose-50 text-rose-800",
   active: "border-emerald-300 bg-emerald-50 text-emerald-800",
+  inactive: "border-slate-300 bg-slate-50 text-slate-700",
+  issued: "border-sky-300 bg-sky-50 text-sky-800",
+  revoked: "border-rose-300 bg-rose-50 text-rose-800",
   pending: "border-amber-300 bg-amber-50 text-amber-800",
   confirmed: "border-sky-300 bg-sky-50 text-sky-800",
   prospect: "border-amber-300 bg-amber-50 text-amber-800",
@@ -83,11 +89,11 @@ function StatusIcon({ status }: { status: string }) {
     return <CheckCircle2 aria-hidden="true" className="size-3.5" />;
   }
 
-  if (status === "rejected" || status === "blocked" || status === "maintenance" || status === "cancelled" || status === "expired" || status === "open" || status === "overdue") {
+  if (status === "rejected" || status === "blocked" || status === "maintenance" || status === "cancelled" || status === "expired" || status === "inactive" || status === "open" || status === "overdue" || status === "revoked") {
     return <XCircle aria-hidden="true" className="size-3.5" />;
   }
 
-  if (status === "submitted" || status === "in_progress" || status === "confirmed" || status === "reserved" || status === "pending" || status === "scheduled" || status === "monitoring" || status === "expiring_soon" || status === "waiting_sponsor" || status === "in_production") {
+  if (status === "submitted" || status === "in_progress" || status === "confirmed" || status === "issued" || status === "reserved" || status === "pending" || status === "scheduled" || status === "monitoring" || status === "expiring_soon" || status === "waiting_sponsor" || status === "in_production") {
     return <Clock3 aria-hidden="true" className="size-3.5" />;
   }
 
