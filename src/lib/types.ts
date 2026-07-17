@@ -167,6 +167,10 @@ export type Incident = {
   status: "open" | "monitoring" | "resolved";
   occurredAt: string;
   description: string;
+  assignedToUserId?: string | null;
+  photoStorageKey?: string | null;
+  photoFileName?: string | null;
+  photoContentType?: string | null;
 };
 
 export type AccessRequest = {

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { recordAuditLog, reviewDocument as persistDocumentReview } from "@/db/queries";
+import { createNotification, getDocumentById, recordAuditLog, reviewDocument as persistDocumentReview } from "@/db/queries";
 import { requireAdminSection } from "@/lib/admin-rbac";
 
 export async function approveDocument(formData: FormData) {
@@ -15,6 +15,9 @@ export async function approveDocument(formData: FormData) {
     return;
   }
 
+  const document = await getDocumentById(documentId);
+  if (!document) return;
+
   await persistDocumentReview(
     documentId,
     "approved",
@@ -23,6 +26,7 @@ export async function approveDocument(formData: FormData) {
     expiresAt && !Number.isNaN(expiresAt.getTime()) ? expiresAt : null,
   );
   await recordAuditLog({ action: "document.approved", actorUserId: session.user.id, entityId: documentId, entityType: "document", metadata: { expiresAt: expiresAt?.toISOString() ?? null } });
+  await createNotification({ actionHref: "/portal/documents", audience: "all", body: `${document.fileName ?? "Your document"} has been approved.`, createdByUserId: session.user.id, expiresAt: null, organizationId: document.organizationId, title: "Document approved", type: "success" });
   revalidatePath("/admin/documents");
   revalidatePath("/portal/documents");
 }
@@ -36,8 +40,12 @@ export async function rejectDocument(formData: FormData) {
     return;
   }
 
+  const document = await getDocumentById(documentId);
+  if (!document) return;
+
   await persistDocumentReview(documentId, "rejected", session.user.id, reviewerNote || "Please resubmit.");
   await recordAuditLog({ action: "document.rejected", actorUserId: session.user.id, entityId: documentId, entityType: "document", metadata: { reviewerNote: reviewerNote || "Please resubmit." } });
+  await createNotification({ actionHref: "/portal/documents", audience: "all", body: `${document.fileName ?? "Your document"} needs a replacement. ${reviewerNote || "Please resubmit."}`, createdByUserId: session.user.id, expiresAt: null, organizationId: document.organizationId, title: "Document rejected", type: "warning" });
   revalidatePath("/admin/documents");
   revalidatePath("/portal/documents");
 }

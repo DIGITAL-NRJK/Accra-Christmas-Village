@@ -338,6 +338,9 @@ export const notifications = pgTable(
     organizationId: text("organization_id").references(() => organizations.id, {
       onDelete: "cascade",
     }),
+    recipientUserId: text("recipient_user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
     actionHref: text("action_href"),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     createdByUserId: text("created_by_user_id").references(() => users.id, {
@@ -348,6 +351,7 @@ export const notifications = pgTable(
   (table) => [
     index("notifications_audience_idx").on(table.audience),
     index("notifications_organization_idx").on(table.organizationId),
+    index("notifications_recipient_idx").on(table.recipientUserId),
   ],
 );
 
@@ -434,9 +438,18 @@ export const incidents = pgTable(
     status: incidentStatusEnum("status").notNull().default("open"),
     occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
     description: text("description").notNull(),
+    assignedToUserId: text("assigned_to_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    photoStorageKey: text("photo_storage_key"),
+    photoFileName: text("photo_file_name"),
+    photoContentType: text("photo_content_type"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [index("incidents_zone_idx").on(table.zoneId)],
+  (table) => [
+    index("incidents_zone_idx").on(table.zoneId),
+    index("incidents_assignee_idx").on(table.assignedToUserId),
+  ],
 );
 
 export const auditLogs = pgTable(

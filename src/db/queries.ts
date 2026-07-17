@@ -481,6 +481,21 @@ export async function getAccessRequestForClerkUser(clerkUserId: string) {
   return request ?? null;
 }
 
+export async function getAccessRequestById(requestId: string) {
+  if (!process.env.DATABASE_URL || !requestId) {
+    return null;
+  }
+
+  const db = getDb();
+  const [request] = await db
+    .select()
+    .from(accessRequests)
+    .where(eq(accessRequests.id, requestId))
+    .limit(1);
+
+  return request ?? null;
+}
+
 export async function listAccessRequests() {
   if (!process.env.DATABASE_URL) {
     return [];
@@ -901,6 +916,7 @@ export type CreateNotificationInput = {
   createdByUserId: string | null;
   expiresAt: Date | null;
   organizationId: string | null;
+  recipientUserId?: string | null;
   title: string;
   type: string;
 };
@@ -951,8 +967,10 @@ export async function listNotificationsForUser(
           ["admin", "super_admin", "operations_manager", "content_manager", "compliance_manager", "stand_manager"].includes(role));
       const organizationMatches =
         !notification.organizationId || notification.organizationId === organizationId;
+      const recipientMatches =
+        !notification.recipientUserId || notification.recipientUserId === userId;
 
-      return active && audienceMatches && organizationMatches;
+      return active && audienceMatches && organizationMatches && recipientMatches;
     })
     .map((notification) => ({ ...notification, read: readIds.has(notification.id) }));
 }
@@ -1065,6 +1083,17 @@ export async function getParticipantPlacement(organizationId: string) {
     stand: stand ?? null,
     zone: zone ?? null,
   };
+}
+
+export async function getStandById(standId: string) {
+  if (!process.env.DATABASE_URL || !standId) {
+    return null;
+  }
+
+  const db = getDb();
+  const [stand] = await db.select().from(stands).where(eq(stands.id, standId)).limit(1);
+
+  return stand ?? null;
 }
 
 export type AssignStandInput = {
@@ -1408,17 +1437,24 @@ export type SaveIncidentInput = Omit<Incident, "id" | "occurredAt"> & {
   occurredAt: Date;
 };
 
-export async function createIncident(input: SaveIncidentInput) {
+export async function createIncident(input: SaveIncidentInput, incidentId = crypto.randomUUID()) {
   if (!process.env.DATABASE_URL) {
     console.info("Skipped incident creation because DATABASE_URL is not set.", input);
-    return;
+    return null;
   }
 
   const db = getDb();
   await db.insert(incidents).values({
     ...input,
-    id: crypto.randomUUID(),
+    id: incidentId,
   });
+  return incidentId;
+}
+
+export async function getIncidentById(incidentId: string) {
+  if (!process.env.DATABASE_URL || !incidentId) return null;
+  const [incident] = await getDb().select().from(incidents).where(eq(incidents.id, incidentId)).limit(1);
+  return incident ?? null;
 }
 
 export async function updateIncident(incidentId: string, input: SaveIncidentInput) {
@@ -1635,17 +1671,36 @@ export type CreateAnnouncementInput = {
 };
 
 export async function createAnnouncement(input: CreateAnnouncementInput) {
+  const announcementId = crypto.randomUUID();
+
   if (!process.env.DATABASE_URL) {
     console.info("Skipped announcement creation because DATABASE_URL is not set.", input);
-    return;
+    return announcementId;
   }
 
   const db = getDb();
 
   await db.insert(announcements).values({
-    id: crypto.randomUUID(),
+    id: announcementId,
     ...input,
   });
+
+  return announcementId;
+}
+
+export async function getAnnouncementById(announcementId: string) {
+  if (!process.env.DATABASE_URL || !announcementId) {
+    return null;
+  }
+
+  const db = getDb();
+  const [announcement] = await db
+    .select()
+    .from(announcements)
+    .where(eq(announcements.id, announcementId))
+    .limit(1);
+
+  return announcement ?? null;
 }
 
 export async function updateAnnouncement(announcementId: string, input: CreateAnnouncementInput) {
