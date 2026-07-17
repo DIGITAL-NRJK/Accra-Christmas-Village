@@ -30,6 +30,8 @@ const statusCopy: Record<string, string> = {
   monitoring: "Monitoring",
   resolved: "Resolved",
   expiring_soon: "Expiring soon",
+  waiting: "Waiting",
+  closed: "Closed",
 };
 
 const statusClasses: Record<string, string> = {
@@ -58,6 +60,8 @@ const statusClasses: Record<string, string> = {
   monitoring: "border-amber-300 bg-amber-50 text-amber-800",
   resolved: "border-emerald-300 bg-emerald-50 text-emerald-800",
   expiring_soon: "border-orange-300 bg-orange-50 text-orange-800",
+  waiting: "border-violet-300 bg-violet-50 text-violet-800",
+  closed: "border-slate-300 bg-slate-50 text-slate-700",
 };
 
 function StatusIcon({ status }: { status: string }) {

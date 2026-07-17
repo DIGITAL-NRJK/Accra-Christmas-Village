@@ -8,6 +8,7 @@ const portalNav = [
   { href: "/portal/stand", label: "Stand" },
   { href: "/portal/messages", label: "Messages" },
   { href: "/portal/notifications", label: "Notifications" },
+  { href: "/portal/support", label: "Support" },
 ];
 
 export function PortalNav({ activeHref, previewQuery = "" }: { activeHref: string; previewQuery?: string }) {
