@@ -52,13 +52,16 @@ function complianceStatus(statuses: DocumentStatus[]): ComplianceStatus {
 export default async function AdminCompliancePage() {
   await requireAdminSection("compliance");
 
-  const { documentRequirements, documents, organizations } = await listAdminData();
+  const { documentRequirements, documents, organizations, vendors } = await listAdminData();
   const participants = organizations.filter(isParticipantOrganization);
   const complianceRows = participants.map((organization) => {
     const requirements = documentRequirements.filter(
       (requirement) =>
         requirement.required &&
-        requirement.organizationType === organization.type,
+        requirement.organizationType === organization.type &&
+        (organization.type !== "vendor" ||
+          requirement.appliesToCategories.length === 0 ||
+          requirement.appliesToCategories.includes(vendors.find((vendor) => vendor.organizationId === organization.id)?.category ?? "")),
     );
     const statuses = requirements.map((requirement) => {
       const document = documents.find(
@@ -67,6 +70,7 @@ export default async function AdminCompliancePage() {
           candidate.requirementId === requirement.id,
       );
 
+      if (document?.status === "approved" && document.expiresAt && new Date(document.expiresAt) < new Date()) return "rejected";
       return (document?.status ?? "missing") as DocumentStatus;
     });
     const approved = statuses.filter((status) => status === "approved").length;

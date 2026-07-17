@@ -31,12 +31,17 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
     previewQuery,
     role,
   } = await requirePortalContext(params);
-  const { documentRequirements, documents: allDocuments } = await listAdminData();
+  const { documentRequirements, documents: allDocuments, documentVersions, vendors } = await listAdminData();
   const maxUploadBytes = getMaxDocumentUploadBytes();
   const documents = allDocuments.filter((document) => document.organizationId === organization.id);
   const requirementType = role === "sponsor" ? "sponsor" : role === "partner" ? "partner" : "vendor";
+  const vendorCategory = vendors.find((vendor) => vendor.organizationId === organization.id)?.category;
   const requirements = documentRequirements.filter(
-    (requirement) => requirement.organizationType === requirementType,
+    (requirement) =>
+      requirement.organizationType === requirementType &&
+      (requirementType !== "vendor" ||
+        requirement.appliesToCategories.length === 0 ||
+        requirement.appliesToCategories.includes(vendorCategory ?? "")),
   );
 
   return (
@@ -65,6 +70,7 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
                   <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">{requirement.description}</p>
                   <div className="mt-3 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
                     <span>{document?.fileName ?? "No file submitted"}</span>
+                    {document ? <span>Version {document.version}</span> : null}
                     {document?.storageKey ? (
                       <a
                         className="inline-flex items-center gap-1 font-semibold text-acv-palm hover:text-acv-palm/80"
@@ -86,8 +92,24 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
                   {new Intl.DateTimeFormat("en", { dateStyle: "long" }).format(expiresAt)}
                 </p>
               ) : null}
+              {document?.issuedAt ? (
+                <p className="mt-3 text-sm font-medium text-slate-600">Issued on {new Intl.DateTimeFormat("en", { dateStyle: "long" }).format(document.issuedAt)}</p>
+              ) : null}
               {document?.reviewerNote ? (
                 <p className="mt-4 rounded-lg bg-rose-50 p-3 text-sm text-rose-800">{document.reviewerNote}</p>
+              ) : null}
+              {document ? (
+                <details className="mt-4 rounded-lg border border-slate-200 p-3">
+                  <summary className="cursor-pointer text-sm font-bold text-acv-ink">Previous submissions</summary>
+                  <div className="mt-3 grid gap-2">
+                    {documentVersions.filter((version) => version.documentId === document.id).map((version) => (
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600" key={version.id}>
+                        <span>v{version.version} · {version.fileName}</span>
+                        <a className="font-bold text-acv-palm" href={`/document-versions/${version.id}/download`}>Download</a>
+                      </div>
+                    ))}
+                  </div>
+                </details>
               ) : null}
               {isAdminPreview ? (
                 <p className="mt-5 rounded-lg bg-acv-paper p-3 text-sm font-semibold text-slate-700">

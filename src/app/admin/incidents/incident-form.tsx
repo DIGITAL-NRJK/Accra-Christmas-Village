@@ -10,6 +10,7 @@ import {
 import type { Incident } from "@/lib/types";
 
 type IncidentFormProps = {
+  assignees: Array<{ id: string; name: string }>;
   incident?: Incident;
   mode: "create" | "update";
   zones: Array<{ id: string; name: string }>;
@@ -35,7 +36,7 @@ function formatDateTimeLocal(value: string | undefined) {
   return localDate.toISOString().slice(0, 16);
 }
 
-export function IncidentForm({ incident, mode, zones }: IncidentFormProps) {
+export function IncidentForm({ assignees, incident, mode, zones }: IncidentFormProps) {
   const action = mode === "create" ? createIncidentAction : updateIncidentAction;
   const [state, formAction, pending] = useActionState(action, initialState);
 
@@ -76,6 +77,14 @@ export function IncidentForm({ incident, mode, zones }: IncidentFormProps) {
         </label>
       </div>
 
+      <label className={labelClass}>
+        <span className="text-sm font-semibold text-slate-700">Responsible team member</span>
+        <select className={inputClass} defaultValue={incident?.assignedToUserId ?? ""} name="assignedToUserId">
+          <option value="">Unassigned</option>
+          {assignees.map((assignee) => <option key={assignee.id} value={assignee.id}>{assignee.name}</option>)}
+        </select>
+      </label>
+
       <div className="grid gap-3 sm:grid-cols-2">
         <label className={labelClass}>
           <span className="text-sm font-semibold text-slate-700">Severity</span>
@@ -112,6 +121,12 @@ export function IncidentForm({ incident, mode, zones }: IncidentFormProps) {
           name="description"
           required
         />
+      </label>
+
+      <label className={labelClass}>
+        <span className="text-sm font-semibold text-slate-700">Field photo</span>
+        <input className={inputClass} accept="image/jpeg,image/png,image/webp" name="photo" type="file" />
+        <span className="text-xs text-slate-500">JPEG, PNG or WebP, maximum 5 MB.{incident?.photoFileName ? ` Current: ${incident.photoFileName}` : ""}</span>
       </label>
 
       {state.message ? (

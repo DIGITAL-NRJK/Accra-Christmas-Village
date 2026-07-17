@@ -10,7 +10,7 @@ export const metadata = { title: "Audit log" };
 export default async function AuditLogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ action?: string; entity?: string; user?: string }>;
+  searchParams: Promise<{ action?: string; entity?: string; from?: string; to?: string; user?: string }>;
 }) {
   await requireAdminSection("audit");
   const { auditLogs, users } = await listAdminData();
@@ -18,6 +18,8 @@ export default async function AuditLogPage({
   const actionFilter = params.action?.trim() || "all";
   const entityFilter = params.entity?.trim() || "all";
   const userFilter = params.user?.trim() || "all";
+  const from = params.from ? new Date(`${params.from}T00:00:00`) : null;
+  const to = params.to ? new Date(`${params.to}T23:59:59.999`) : null;
   const userNames = new Map(users.map((user) => [user.id, user.fullName]));
   const actions = [...new Set(auditLogs.map((log) => log.action))].sort();
   const entities = [...new Set(auditLogs.map((log) => log.entityType))].sort();
@@ -25,7 +27,9 @@ export default async function AuditLogPage({
     (log) =>
       (actionFilter === "all" || log.action === actionFilter) &&
       (entityFilter === "all" || log.entityType === entityFilter) &&
-      (userFilter === "all" || log.actorUserId === userFilter),
+      (userFilter === "all" || log.actorUserId === userFilter) &&
+      (!from || log.createdAt >= from) &&
+      (!to || log.createdAt <= to),
   );
 
   return (
@@ -35,10 +39,10 @@ export default async function AuditLogPage({
         title="Audit log"
         description="Trace sensitive administrative actions with their actor, entity, timestamp and recorded context."
       />
-      <AdminNav activeHref="/admin/audit-log" />
+      <AdminNav activeHref="/admin/audit-logs" />
       <section className="mx-auto w-full max-w-6xl px-4 pb-5 sm:px-6 lg:px-8">
         <form
-          className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[1fr_1fr_1fr_auto_auto]"
+          className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[1fr_1fr_1fr_0.8fr_0.8fr_auto_auto]"
           method="get"
         >
           <label className="grid gap-2">
@@ -48,6 +52,8 @@ export default async function AuditLogPage({
               {actions.map((action) => <option key={action} value={action}>{action}</option>)}
             </select>
           </label>
+          <label className="grid gap-2"><span className="text-xs font-bold uppercase text-slate-500">From</span><input className="rounded-md border border-slate-200 px-3 py-2 text-sm" defaultValue={params.from} name="from" type="date" /></label>
+          <label className="grid gap-2"><span className="text-xs font-bold uppercase text-slate-500">To</span><input className="rounded-md border border-slate-200 px-3 py-2 text-sm" defaultValue={params.to} name="to" type="date" /></label>
           <label className="grid gap-2">
             <span className="text-xs font-bold uppercase text-slate-500">Entity</span>
             <select className="rounded-md border border-slate-200 px-3 py-2 text-sm" defaultValue={entityFilter} name="entity">
@@ -65,7 +71,7 @@ export default async function AuditLogPage({
           <button className="inline-flex items-center justify-center gap-2 rounded-md bg-acv-ink px-4 py-2 text-sm font-bold text-white">
             <Filter className="size-4" /> Filter
           </button>
-          <Link className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 px-4 py-2 text-sm font-bold text-acv-ink" href="/admin/audit-log">
+          <Link className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 px-4 py-2 text-sm font-bold text-acv-ink" href="/admin/audit-logs">
             <RotateCcw className="size-4" /> Reset
           </Link>
         </form>

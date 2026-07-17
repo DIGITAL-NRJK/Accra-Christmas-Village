@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import {
   createAnnouncement,
+  createNotification,
   deleteAnnouncement,
+  getAnnouncementById,
+  recordAuditLog,
   updateAnnouncement,
   updateAnnouncementPublication,
   type CreateAnnouncementInput,
@@ -87,13 +90,31 @@ function revalidateAnnouncementPaths() {
   revalidatePath("/admin/announcements");
   revalidatePath("/portal");
   revalidatePath("/portal/messages");
+  revalidatePath("/notifications");
+}
+
+async function publishUrgentNotification(
+  input: CreateAnnouncementInput,
+  createdByUserId: string | null,
+) {
+  if (!input.published || input.priority !== "high") return;
+  await createNotification({
+    actionHref: input.audience === "admin" ? "/admin/announcements" : "/portal/messages",
+    audience: input.audience === "admin" ? "internal" : input.audience,
+    body: input.body,
+    createdByUserId,
+    expiresAt: input.endsAt,
+    organizationId: null,
+    title: input.title,
+    type: "critical",
+  });
 }
 
 export async function createAnnouncementAction(
   _previousState: AnnouncementActionState,
   formData: FormData,
 ): Promise<AnnouncementActionState> {
-  await requireAdminSection("announcements");
+  const session = await requireAdminSection("announcements");
 
   const input = announcementInput(formData);
 
@@ -101,7 +122,9 @@ export async function createAnnouncementAction(
     return getErrorState(input.error);
   }
 
-  await createAnnouncement(input);
+  const announcementId = await createAnnouncement(input);
+  await publishUrgentNotification(input, session.user?.id ?? null);
+  await recordAuditLog({ action: "announcement.created", actorUserId: session.user?.id ?? null, entityId: announcementId, entityType: "announcement", metadata: { audience: input.audience, priority: input.priority, published: input.published } });
   revalidateAnnouncementPaths();
 
   return {
@@ -114,7 +137,7 @@ export async function updateAnnouncementAction(
   _previousState: AnnouncementActionState,
   formData: FormData,
 ): Promise<AnnouncementActionState> {
-  await requireAdminSection("announcements");
+  const session = await requireAdminSection("announcements");
 
   const announcementId = textValue(formData, "announcementId");
   const input = announcementInput(formData);
@@ -127,7 +150,12 @@ export async function updateAnnouncementAction(
     return getErrorState(input.error);
   }
 
+  const previous = await getAnnouncementById(announcementId);
   await updateAnnouncement(announcementId, input);
+  if (!previous?.published || previous.priority !== "high") {
+    await publishUrgentNotification(input, session.user?.id ?? null);
+  }
+  await recordAuditLog({ action: "announcement.updated", actorUserId: session.user?.id ?? null, entityId: announcementId, entityType: "announcement", metadata: { before: previous ? { audience: previous.audience, priority: previous.priority, published: previous.published } : null, after: { audience: input.audience, priority: input.priority, published: input.published } } });
   revalidateAnnouncementPaths();
 
   return {
@@ -137,20 +165,26 @@ export async function updateAnnouncementAction(
 }
 
 export async function updateAnnouncementPublicationAction(formData: FormData) {
-  await requireAdminSection("announcements");
+  const session = await requireAdminSection("announcements");
 
   const announcementId = textValue(formData, "announcementId");
   const published = isPublishedValue(formData);
 
+  const announcement = await getAnnouncementById(announcementId);
   await updateAnnouncementPublication(announcementId, published);
+  if (announcement && published && !announcement.published) {
+    await publishUrgentNotification({ ...announcement, published }, session.user?.id ?? null);
+  }
+  await recordAuditLog({ action: published ? "announcement.published" : "announcement.unpublished", actorUserId: session.user?.id ?? null, entityId: announcementId, entityType: "announcement" });
   revalidateAnnouncementPaths();
 }
 
 export async function deleteAnnouncementAction(formData: FormData) {
-  await requireAdminSection("announcements");
+  const session = await requireAdminSection("announcements");
 
   const announcementId = textValue(formData, "announcementId");
 
   await deleteAnnouncement(announcementId);
+  await recordAuditLog({ action: "announcement.deleted", actorUserId: session.user?.id ?? null, entityId: announcementId, entityType: "announcement" });
   revalidateAnnouncementPaths();
 }

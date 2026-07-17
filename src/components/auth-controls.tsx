@@ -39,7 +39,7 @@ export function AuthControls({ compact = false, unreadNotifications = 0 }: AuthC
         <Link
           aria-label={`${unreadNotifications} unread notifications`}
           className="relative inline-flex size-9 items-center justify-center rounded-full border border-white/[0.18] bg-white/[0.08] text-white transition hover:bg-white/[0.16]"
-          href="/portal/notifications"
+          href="/notifications"
         >
           <Bell aria-hidden="true" className="size-4" />
           {unreadNotifications > 0 ? (

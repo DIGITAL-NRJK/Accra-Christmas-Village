@@ -216,6 +216,7 @@ async function main() {
           name: requirement.name,
           description: requirement.description,
           required: requirement.required,
+          appliesToCategories: requirement.appliesToCategories ?? [],
           sortOrder: requirement.sortOrder,
         },
       });

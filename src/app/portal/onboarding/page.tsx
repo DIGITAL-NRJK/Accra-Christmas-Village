@@ -18,9 +18,13 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
   const params = await searchParams;
   const { organization, previewQuery, role } = await requirePortalContext(params);
   const organizationId = organization.id;
-  const { documentRequirements, documents } = await listAdminData();
+  const { documentRequirements, documents, vendors } = await listAdminData();
   const requirementType = role === "sponsor" ? "sponsor" : role === "partner" ? "partner" : "vendor";
-  const requirements = documentRequirements.filter((requirement) => requirement.organizationType === requirementType);
+  const vendorCategory = vendors.find((vendor) => vendor.organizationId === organizationId)?.category;
+  const requirements = documentRequirements.filter((requirement) =>
+    requirement.organizationType === requirementType &&
+    (requirementType !== "vendor" || requirement.appliesToCategories.length === 0 || requirement.appliesToCategories.includes(vendorCategory ?? "")),
+  );
   const organizationDocuments = documents.filter((document) => document.organizationId === organizationId);
   const approvedCount = requirements.filter((requirement) =>
     organizationDocuments.some((document) => document.requirementId === requirement.id && document.status === "approved"),

@@ -15,6 +15,7 @@ export async function markNotificationReadAction(formData: FormData) {
   if (!session?.user || !notificationId) return;
   await markNotificationRead(notificationId, session.user.id);
   revalidatePath("/portal/notifications");
+  revalidatePath("/notifications");
   revalidatePath("/", "layout");
 }
 
@@ -24,5 +25,6 @@ export async function markAllNotificationsReadAction() {
   const items = await listNotificationsForUser(session.user.id, session.role, session.user.organizationId);
   await markAllNotificationsRead(items.map((item) => item.id), session.user.id);
   revalidatePath("/portal/notifications");
+  revalidatePath("/notifications");
   revalidatePath("/", "layout");
 }

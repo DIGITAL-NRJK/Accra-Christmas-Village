@@ -55,6 +55,7 @@ export type Organization = {
   contactEmail: string;
   contactPhone: string;
   status: "pending" | "active" | "suspended";
+  complianceStatus?: ComplianceStatus;
 };
 
 export type User = {
@@ -124,6 +125,7 @@ export type DocumentRequirement = {
   name: string;
   description: string;
   required: boolean;
+  appliesToCategories?: string[];
   sortOrder: number;
 };
 
@@ -136,7 +138,11 @@ export type DocumentRecord = {
   submittedAt: string | null;
   reviewedAt: string | null;
   reviewerNote: string | null;
+  internalNote?: string | null;
+  issuedAt?: string | null;
   expiresAt?: string | null;
+  replacementRequestedAt?: string | null;
+  version?: number;
 };
 
 export type OnboardingTask = {
@@ -167,6 +173,10 @@ export type Incident = {
   status: "open" | "monitoring" | "resolved";
   occurredAt: string;
   description: string;
+  assignedToUserId?: string | null;
+  photoStorageKey?: string | null;
+  photoFileName?: string | null;
+  photoContentType?: string | null;
 };
 
 export type AccessRequest = {

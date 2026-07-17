@@ -122,6 +122,7 @@ export const organizations = pgTable("organizations", {
   contactEmail: text("contact_email").notNull(),
   contactPhone: text("contact_phone").notNull(),
   status: organizationStatusEnum("status").notNull().default("pending"),
+  complianceStatus: complianceStatusEnum("compliance_status").notNull().default("not_started"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -258,6 +259,7 @@ export const documentRequirements = pgTable("document_requirements", {
   name: text("name").notNull(),
   description: text("description").notNull(),
   required: boolean("required").notNull().default(true),
+  appliesToCategories: jsonb("applies_to_categories").$type<string[]>().notNull().default([]),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -301,7 +303,12 @@ export const documents = pgTable(
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     reviewedByUserId: text("reviewed_by_user_id").references(() => users.id),
+    issuedAt: timestamp("issued_at", { withTimezone: true }),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
+    internalNote: text("internal_note"),
+    replacementRequestedAt: timestamp("replacement_requested_at", { withTimezone: true }),
+    reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
+    version: integer("version").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
@@ -312,6 +319,40 @@ export const documents = pgTable(
       table.organizationId,
       table.requirementId,
     ),
+  ],
+);
+
+export const documentVersions = pgTable(
+  "document_versions",
+  {
+    id: text("id").primaryKey(),
+    documentId: text("document_id")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    requirementId: text("requirement_id")
+      .notNull()
+      .references(() => documentRequirements.id),
+    uploaderUserId: text("uploader_user_id").references(() => users.id, { onDelete: "set null" }),
+    version: integer("version").notNull(),
+    fileName: text("file_name").notNull(),
+    fileType: text("file_type").notNull(),
+    fileSize: integer("file_size").notNull(),
+    storageKey: text("storage_key").notNull(),
+    status: documentStatusEnum("status").notNull().default("submitted"),
+    reviewerNote: text("reviewer_note"),
+    internalNote: text("internal_note"),
+    issuedAt: timestamp("issued_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }).defaultNow().notNull(),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewedByUserId: text("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  },
+  (table) => [
+    index("document_versions_document_idx").on(table.documentId),
+    uniqueIndex("document_versions_number_unique").on(table.documentId, table.version),
   ],
 );
 
@@ -338,6 +379,9 @@ export const notifications = pgTable(
     organizationId: text("organization_id").references(() => organizations.id, {
       onDelete: "cascade",
     }),
+    recipientUserId: text("recipient_user_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
     actionHref: text("action_href"),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     createdByUserId: text("created_by_user_id").references(() => users.id, {
@@ -348,6 +392,7 @@ export const notifications = pgTable(
   (table) => [
     index("notifications_audience_idx").on(table.audience),
     index("notifications_organization_idx").on(table.organizationId),
+    index("notifications_recipient_idx").on(table.recipientUserId),
   ],
 );
 
@@ -434,9 +479,45 @@ export const incidents = pgTable(
     status: incidentStatusEnum("status").notNull().default("open"),
     occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
     description: text("description").notNull(),
+    assignedToUserId: text("assigned_to_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    photoStorageKey: text("photo_storage_key"),
+    photoFileName: text("photo_file_name"),
+    photoContentType: text("photo_content_type"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [index("incidents_zone_idx").on(table.zoneId)],
+  (table) => [
+    index("incidents_zone_idx").on(table.zoneId),
+    index("incidents_assignee_idx").on(table.assignedToUserId),
+  ],
+);
+
+export const operationalTasks = pgTable(
+  "operational_tasks",
+  {
+    id: text("id").primaryKey(),
+    title: text("title").notNull(),
+    taskType: text("task_type").notNull(),
+    description: text("description").notNull().default(""),
+    zoneId: text("zone_id").references(() => zones.id, { onDelete: "set null" }),
+    standId: text("stand_id").references(() => stands.id, { onDelete: "set null" }),
+    assignedToUserId: text("assigned_to_user_id").references(() => users.id, { onDelete: "set null" }),
+    dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+    priority: text("priority").notNull().default("normal"),
+    status: text("status").notNull().default("todo"),
+    proofStorageKey: text("proof_storage_key"),
+    proofFileName: text("proof_file_name"),
+    proofContentType: text("proof_content_type"),
+    createdByUserId: text("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("operational_tasks_status_due_idx").on(table.status, table.dueAt),
+    index("operational_tasks_assignee_idx").on(table.assignedToUserId),
+  ],
 );
 
 export const auditLogs = pgTable(

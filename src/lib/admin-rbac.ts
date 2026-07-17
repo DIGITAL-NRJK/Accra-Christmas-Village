@@ -16,9 +16,11 @@ export type AdminSection =
   | "notifications"
   | "preview"
   | "programme"
+  | "reports"
   | "sponsors"
   | "sponsor_delivery"
   | "stands"
+  | "tasks"
   | "tickets"
   | "users"
   | "vendors";
@@ -34,7 +36,7 @@ export const adminAccessRoles: Role[] = [
 
 export const adminNavItems: Array<NavItem & { section: AdminSection }> = [
   { href: "/admin", label: "Dashboard", section: "dashboard" },
-  { href: "/admin/audit-log", label: "Audit log", section: "audit" },
+  { href: "/admin/audit-logs", label: "Audit log", section: "audit" },
   { href: "/admin/analytics", label: "Analytics", section: "analytics" },
   { href: "/admin/users", label: "Users", section: "users" },
   { href: "/admin/preview", label: "Preview", section: "preview" },
@@ -49,7 +51,9 @@ export const adminNavItems: Array<NavItem & { section: AdminSection }> = [
   { href: "/admin/documents", label: "Documents", section: "documents" },
   { href: "/admin/compliance", label: "Compliance", section: "compliance" },
   { href: "/admin/stands", label: "Stands", section: "stands" },
+  { href: "/admin/tasks", label: "Tasks", section: "tasks" },
   { href: "/admin/programme", label: "Programme", section: "programme" },
+  { href: "/admin/reports", label: "Reports", section: "reports" },
   { href: "/admin/announcements", label: "Announcements", section: "announcements" },
 ];
 
@@ -58,10 +62,10 @@ const allAdminSections = adminNavItems.map((item) => item.section);
 const adminSectionPermissions: Record<Role, AdminSection[]> = {
   admin: allAdminSections,
   super_admin: allAdminSections,
-  operations_manager: ["dashboard", "access", "vendors", "sponsors", "sponsor_delivery", "incidents", "notifications", "tickets", "stands", "analytics"],
-  content_manager: ["dashboard", "hero", "programme", "announcements", "notifications", "analytics", "sponsor_delivery"],
-  compliance_manager: ["dashboard", "documents", "compliance", "notifications", "tickets"],
-  stand_manager: ["dashboard", "stands"],
+  operations_manager: ["dashboard", "access", "vendors", "sponsors", "sponsor_delivery", "incidents", "notifications", "tickets", "stands", "tasks", "analytics", "reports"],
+  content_manager: ["dashboard", "hero", "programme", "announcements", "notifications", "analytics", "sponsor_delivery", "reports"],
+  compliance_manager: ["dashboard", "documents", "compliance", "notifications", "tickets", "reports"],
+  stand_manager: ["dashboard", "stands", "tasks", "reports"],
   partner: [],
   sponsor: [],
   vendor: [],

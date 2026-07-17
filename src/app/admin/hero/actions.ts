@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import {
   createHeroSlide,
   deleteHeroSlide,
+  getHeroSlideById,
+  recordAuditLog,
   updateHeroSlide,
   updateHeroSlidePublication,
   type SaveHeroSlideInput,
@@ -193,7 +195,7 @@ export async function createHeroSlideAction(
   _previousState: HeroSlideActionState,
   formData: FormData,
 ): Promise<HeroSlideActionState> {
-  await requireAdminSection("hero");
+  const session = await requireAdminSection("hero");
 
   const slideId = crypto.randomUUID();
   const result = await heroSlideInput(formData, slideId);
@@ -203,6 +205,7 @@ export async function createHeroSlideAction(
   }
 
   await createHeroSlide({ ...result.input, id: slideId });
+  await recordAuditLog({ action: "hero_slide.created", actorUserId: session.user?.id ?? null, entityId: slideId, entityType: "hero_slide", metadata: { after: result.input } });
   revalidateHeroPaths();
 
   return {
@@ -219,7 +222,7 @@ export async function updateHeroSlideAction(
   _previousState: HeroSlideActionState,
   formData: FormData,
 ): Promise<HeroSlideActionState> {
-  await requireAdminSection("hero");
+  const session = await requireAdminSection("hero");
 
   const slideId = textValue(formData, "slideId");
 
@@ -233,7 +236,9 @@ export async function updateHeroSlideAction(
     return getErrorState(result.error);
   }
 
+  const previous = await getHeroSlideById(slideId);
   await updateHeroSlide(slideId, result.input);
+  await recordAuditLog({ action: "hero_slide.updated", actorUserId: session.user?.id ?? null, entityId: slideId, entityType: "hero_slide", metadata: { before: previous, after: result.input } });
   revalidateHeroPaths();
 
   return {
@@ -247,7 +252,7 @@ export async function updateHeroSlideAction(
 }
 
 export async function updateHeroSlidePublicationAction(formData: FormData) {
-  await requireAdminSection("hero");
+  const session = await requireAdminSection("hero");
 
   const slideId = textValue(formData, "slideId");
   const published = formData.get("published") === "true";
@@ -256,12 +261,14 @@ export async function updateHeroSlidePublicationAction(formData: FormData) {
     return;
   }
 
+  const previous = await getHeroSlideById(slideId);
   await updateHeroSlidePublication(slideId, published);
+  await recordAuditLog({ action: "hero_slide.publication_changed", actorUserId: session.user?.id ?? null, entityId: slideId, entityType: "hero_slide", metadata: { before: previous?.published ?? null, after: published } });
   revalidateHeroPaths();
 }
 
 export async function deleteHeroSlideAction(formData: FormData) {
-  await requireAdminSection("hero");
+  const session = await requireAdminSection("hero");
 
   const slideId = textValue(formData, "slideId");
 
@@ -269,6 +276,8 @@ export async function deleteHeroSlideAction(formData: FormData) {
     return;
   }
 
+  const previous = await getHeroSlideById(slideId);
   await deleteHeroSlide(slideId);
+  await recordAuditLog({ action: "hero_slide.deleted", actorUserId: session.user?.id ?? null, entityId: slideId, entityType: "hero_slide", metadata: { before: previous } });
   revalidateHeroPaths();
 }

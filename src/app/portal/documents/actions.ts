@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { saveDocumentMetadata } from "@/db/queries";
+import { createNotification, recordAuditLog, saveDocumentMetadata } from "@/db/queries";
 import { requireAnyRole } from "@/lib/auth";
 import {
   allowedDocumentExtensions,
@@ -92,6 +92,8 @@ export async function uploadDocument(
     storageKey: storedFile.key,
     storageUrl: storedFile.url,
   });
+  await createNotification({ actionHref: "/admin/documents", audience: "internal", body: `${session.organization.name} submitted ${storedFile.fileName} for review.`, createdByUserId: session.user.id, expiresAt: null, organizationId: null, title: "Document submitted", type: "info" });
+  await recordAuditLog({ action: "document.submitted", actorUserId: session.user.id, entityId: requirementId, entityType: "document_requirement", metadata: { fileName: storedFile.fileName, organizationId: session.organization.id } });
 
   revalidatePath("/portal/documents");
   revalidatePath("/admin/documents");

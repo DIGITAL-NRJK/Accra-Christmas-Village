@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import {
   createIncident,
+  createNotification,
   deleteIncident,
+  getIncidentById,
   recordAuditLog,
   updateIncident,
   updateIncidentStatus,
@@ -11,6 +13,7 @@ import {
 } from "@/db/queries";
 import { requireAdminSection } from "@/lib/admin-rbac";
 import type { Incident } from "@/lib/types";
+import { documentStorage } from "@/lib/storage";
 
 export type IncidentActionState = {
   message: string;
@@ -35,6 +38,7 @@ function incidentInput(formData: FormData): SaveIncidentInput | { error: string 
   const severity = textValue(formData, "severity", "medium") as Incident["severity"];
   const status = textValue(formData, "status", "open") as Incident["status"];
   const occurredAt = new Date(textValue(formData, "occurredAt"));
+  const assignedToUserId = textValue(formData, "assignedToUserId") || null;
 
   if (!title || !description || !zoneId) {
     return { error: "Complete the title, zone and description before saving." };
@@ -59,12 +63,34 @@ function incidentInput(formData: FormData): SaveIncidentInput | { error: string 
     status,
     title,
     zoneId,
+    assignedToUserId,
   };
+}
+
+async function storePhoto(formData: FormData, incidentId: string) {
+  const file = formData.get("photo");
+  if (!(file instanceof File) || file.size === 0) return { photo: null };
+  if (file.size > 5 * 1024 * 1024) return { error: "Upload an incident photo smaller than 5 MB." };
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) return { error: "Upload a JPEG, PNG or WebP incident photo." };
+  try {
+    const stored = await documentStorage.put(file, { organizationId: "incident-photos", requirementId: incidentId });
+    return { photo: { photoContentType: stored.contentType, photoFileName: stored.fileName, photoStorageKey: stored.key } };
+  } catch (error) {
+    console.error("Incident photo upload failed.", { incidentId, error });
+    return { error: "The incident photo could not be saved." };
+  }
+}
+
+async function notifyAssignee(incidentId: string, assigneeId: string | null, title: string, severity: string) {
+  if (!assigneeId) return;
+  await createNotification({ actionHref: `/admin/incidents?incident=${incidentId}`, audience: "all", body: `You are responsible for the ${severity} incident: ${title}.`, createdByUserId: null, expiresAt: null, organizationId: null, recipientUserId: assigneeId, title: "Incident assigned to you", type: severity === "critical" ? "critical" : "warning" });
 }
 
 function revalidateIncidentPaths() {
   revalidatePath("/admin");
   revalidatePath("/admin/incidents");
+  revalidatePath("/notifications");
+  revalidatePath("/", "layout");
 }
 
 export async function createIncidentAction(
@@ -78,9 +104,12 @@ export async function createIncidentAction(
   if ("error" in input) {
     return errorState(input.error);
   }
-
-  await createIncident(input);
-  await recordAuditLog({ action: "incident.created", actorUserId: session.user?.id ?? null, entityId: input.title, entityType: "incident", metadata: { severity: input.severity, status: input.status, zoneId: input.zoneId } });
+  const incidentId = crypto.randomUUID();
+  const photoResult = await storePhoto(formData, incidentId);
+  if ("error" in photoResult) return errorState(photoResult.error ?? "The incident photo could not be saved.");
+  await createIncident({ ...input, ...(photoResult.photo ?? {}) }, incidentId);
+  await notifyAssignee(incidentId, input.assignedToUserId ?? null, input.title, input.severity);
+  await recordAuditLog({ action: "incident.created", actorUserId: session.user?.id ?? null, entityId: incidentId, entityType: "incident", metadata: { assignedToUserId: input.assignedToUserId, severity: input.severity, status: input.status, zoneId: input.zoneId } });
   revalidateIncidentPaths();
 
   return { message: "Incident created.", status: "success" };
@@ -102,9 +131,15 @@ export async function updateIncidentAction(
   if ("error" in input) {
     return errorState(input.error);
   }
-
-  await updateIncident(incidentId, input);
-  await recordAuditLog({ action: "incident.updated", actorUserId: session.user?.id ?? null, entityId: incidentId, entityType: "incident", metadata: { severity: input.severity, status: input.status } });
+  const previous = await getIncidentById(incidentId);
+  if (!previous) return errorState("The incident no longer exists.");
+  const photoResult = await storePhoto(formData, incidentId);
+  if ("error" in photoResult) return errorState(photoResult.error ?? "The incident photo could not be saved.");
+  const photo = photoResult.photo ?? { photoContentType: previous.photoContentType, photoFileName: previous.photoFileName, photoStorageKey: previous.photoStorageKey };
+  await updateIncident(incidentId, { ...input, ...photo });
+  if (previous.assignedToUserId !== input.assignedToUserId) await notifyAssignee(incidentId, input.assignedToUserId ?? null, input.title, input.severity);
+  if (photoResult.photo && previous.photoStorageKey) await documentStorage.delete(previous.photoStorageKey).catch(() => undefined);
+  await recordAuditLog({ action: "incident.updated", actorUserId: session.user?.id ?? null, entityId: incidentId, entityType: "incident", metadata: { before: { assignedToUserId: previous.assignedToUserId, severity: previous.severity, status: previous.status }, after: { assignedToUserId: input.assignedToUserId, severity: input.severity, status: input.status } } });
   revalidateIncidentPaths();
 
   return { message: "Incident updated.", status: "success" };
@@ -120,8 +155,13 @@ export async function updateIncidentStatusAction(formData: FormData) {
     return;
   }
 
+  const incident = await getIncidentById(incidentId);
+  if (!incident) return;
   await updateIncidentStatus(incidentId, status);
-  await recordAuditLog({ action: "incident.status_changed", actorUserId: session.user?.id ?? null, entityId: incidentId, entityType: "incident", metadata: { status } });
+  if (incident.assignedToUserId && incident.status !== status) {
+    await createNotification({ actionHref: `/admin/incidents?incident=${incidentId}`, audience: "all", body: `${incident.title} is now ${status}.`, createdByUserId: session.user?.id ?? null, expiresAt: null, organizationId: null, recipientUserId: incident.assignedToUserId, title: "Incident status updated", type: status === "resolved" ? "success" : "warning" });
+  }
+  await recordAuditLog({ action: "incident.status_changed", actorUserId: session.user?.id ?? null, entityId: incidentId, entityType: "incident", metadata: { before: incident.status, after: status } });
   revalidateIncidentPaths();
 }
 
@@ -129,7 +169,8 @@ export async function deleteIncidentAction(formData: FormData) {
   const session = await requireAdminSection("incidents");
 
   const incidentId = textValue(formData, "incidentId");
-
+  const incident = await getIncidentById(incidentId);
+  if (incident?.photoStorageKey) await documentStorage.delete(incident.photoStorageKey).catch(() => undefined);
   await deleteIncident(incidentId);
   await recordAuditLog({ action: "incident.deleted", actorUserId: session.user?.id ?? null, entityId: incidentId, entityType: "incident" });
   revalidateIncidentPaths();

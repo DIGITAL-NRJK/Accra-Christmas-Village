@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import {
   createSponsor,
   deleteSponsor,
+  getSponsorById,
+  recordAuditLog,
   updateSponsor,
   updateSponsorStatus,
   type SaveSponsorInput,
@@ -79,7 +81,7 @@ export async function createSponsorAction(
   _previousState: SponsorActionState,
   formData: FormData,
 ): Promise<SponsorActionState> {
-  await requireAdminSection("sponsors");
+  const session = await requireAdminSection("sponsors");
 
   const input = getSponsorInput(formData);
 
@@ -87,7 +89,8 @@ export async function createSponsorAction(
     return getErrorState(input.error);
   }
 
-  await createSponsor(input);
+  const sponsorId = await createSponsor(input);
+  await recordAuditLog({ action: "sponsor.created", actorUserId: session.user?.id ?? null, entityId: sponsorId, entityType: "sponsor", metadata: { after: input } });
   revalidateSponsorPaths();
 
   return {
@@ -100,7 +103,7 @@ export async function updateSponsorAction(
   _previousState: SponsorActionState,
   formData: FormData,
 ): Promise<SponsorActionState> {
-  await requireAdminSection("sponsors");
+  const session = await requireAdminSection("sponsors");
 
   const sponsorId = textValue(formData, "sponsorId");
   const organizationId = textValue(formData, "organizationId");
@@ -114,7 +117,9 @@ export async function updateSponsorAction(
     return getErrorState(input.error);
   }
 
+  const previous = await getSponsorById(sponsorId);
   await updateSponsor(sponsorId, organizationId, input);
+  await recordAuditLog({ action: "sponsor.updated", actorUserId: session.user?.id ?? null, entityId: sponsorId, entityType: "sponsor", metadata: { before: previous, after: input } });
   revalidateSponsorPaths();
 
   return {
@@ -124,7 +129,7 @@ export async function updateSponsorAction(
 }
 
 export async function updateSponsorStatusAction(formData: FormData) {
-  await requireAdminSection("sponsors");
+  const session = await requireAdminSection("sponsors");
 
   const sponsorId = textValue(formData, "sponsorId");
   const status = textValue(formData, "status") as Sponsor["status"];
@@ -133,15 +138,19 @@ export async function updateSponsorStatusAction(formData: FormData) {
     return;
   }
 
+  const previous = await getSponsorById(sponsorId);
   await updateSponsorStatus(sponsorId, status);
+  await recordAuditLog({ action: "sponsor.status_changed", actorUserId: session.user?.id ?? null, entityId: sponsorId, entityType: "sponsor", metadata: { before: previous?.status ?? null, after: status } });
   revalidateSponsorPaths();
 }
 
 export async function deleteSponsorAction(formData: FormData) {
-  await requireAdminSection("sponsors");
+  const session = await requireAdminSection("sponsors");
 
   const sponsorId = textValue(formData, "sponsorId");
 
+  const previous = await getSponsorById(sponsorId);
   await deleteSponsor(sponsorId);
+  await recordAuditLog({ action: "sponsor.deleted", actorUserId: session.user?.id ?? null, entityId: sponsorId, entityType: "sponsor", metadata: { before: previous } });
   revalidateSponsorPaths();
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
   ChevronRight,
   Filter,
@@ -6,6 +7,7 @@ import {
   Plus,
   RotateCcw,
   Siren,
+  UserRound,
 } from "lucide-react";
 import { IncidentControls } from "@/app/admin/incidents/incident-controls";
 import { IncidentForm } from "@/app/admin/incidents/incident-form";
@@ -85,7 +87,7 @@ function incidentHref(
 export default async function AdminIncidentsPage({ searchParams }: AdminIncidentsPageProps) {
   await requireAdminSection("incidents");
 
-  const { incidents, zones } = await listAdminData();
+  const { auditLogs, incidents, users, zones } = await listAdminData();
   const params = await searchParams;
   const severityFilter = filterValue(params.severity, severityFilters);
   const statusFilter = filterValue(params.status, statusFilters);
@@ -108,9 +110,23 @@ export default async function AdminIncidentsPage({ searchParams }: AdminIncident
         status: selectedIncident.status,
         title: selectedIncident.title,
         zoneId: selectedIncident.zoneId,
+        assignedToUserId: selectedIncident.assignedToUserId,
+        photoContentType: selectedIncident.photoContentType,
+        photoFileName: selectedIncident.photoFileName,
+        photoStorageKey: selectedIncident.photoStorageKey,
       }
     : undefined;
   const zoneNames = new Map(zones.map((zone) => [zone.id, zone.name]));
+  const userNames = new Map(users.map((user) => [user.id, user.fullName]));
+  const assignees = users
+    .filter((user) => ["admin", "super_admin", "operations_manager", "stand_manager"].includes(user.role))
+    .map((user) => ({ id: user.id, name: user.fullName }));
+  const incidentHistory = selectedIncident
+    ? auditLogs.filter((log) => log.entityType === "incident" && log.entityId === selectedIncident.id)
+    : [];
+  const photoUrl = selectedIncident?.photoStorageKey
+    ? `/incident-assets/${selectedIncident.photoStorageKey.split("/").map(encodeURIComponent).join("/")}`
+    : null;
   const openCount = incidents.filter((incident) => incident.status === "open").length;
   const monitoringCount = incidents.filter((incident) => incident.status === "monitoring").length;
   const criticalCount = incidents.filter(
@@ -203,7 +219,7 @@ export default async function AdminIncidentsPage({ searchParams }: AdminIncident
               <span className="rounded-full bg-acv-paper px-2 py-1 text-xs text-slate-600">New</span>
             </summary>
             <div className="border-t border-slate-200 p-4">
-              <IncidentForm mode="create" zones={normalizedZones} />
+              <IncidentForm assignees={assignees} mode="create" zones={normalizedZones} />
             </div>
           </details>
 
@@ -275,11 +291,17 @@ export default async function AdminIncidentsPage({ searchParams }: AdminIncident
                     {zoneNames.get(selectedIncident.zoneId) ?? "Unknown zone"} ·{" "}
                     {formatDateTime(selectedIncident.occurredAt)}
                   </p>
+                  <p className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-slate-600">
+                    <UserRound className="size-4 text-acv-clay" />
+                    {selectedIncident.assignedToUserId ? userNames.get(selectedIncident.assignedToUserId) ?? "Former user" : "Unassigned"}
+                  </p>
                 </div>
                 <StatusPill status={selectedIncident.status} />
               </div>
               <div className="grid gap-4 p-5">
+                {photoUrl ? <div className="overflow-hidden rounded-lg border border-slate-200 bg-acv-paper"><Image alt={`Field evidence for ${selectedIncident.title}`} className="h-auto w-full object-cover" height={720} src={photoUrl} unoptimized width={1280} /></div> : null}
                 <IncidentForm
+                  assignees={assignees}
                   incident={normalizedIncident}
                   mode="update"
                   zones={normalizedZones}
@@ -289,6 +311,10 @@ export default async function AdminIncidentsPage({ searchParams }: AdminIncident
                   status={selectedIncident.status}
                   title={selectedIncident.title}
                 />
+                <section className="border-t border-slate-200 pt-5">
+                  <p className="font-mono text-xs font-bold uppercase text-acv-clay">Action history</p>
+                  <div className="mt-3 grid gap-3">{incidentHistory.map((entry) => <article className="rounded-lg bg-acv-paper p-3" key={entry.id}><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-bold text-acv-ink">{entry.action.replaceAll(".", " ")}</p><time className="text-xs text-slate-500">{formatDateTime(entry.createdAt)}</time></div><p className="mt-1 text-xs text-slate-600">{entry.actorUserId ? userNames.get(entry.actorUserId) ?? "Former user" : "System"}</p></article>)}{incidentHistory.length === 0 ? <p className="text-sm text-slate-600">No recorded actions yet.</p> : null}</div>
+                </section>
               </div>
             </>
           ) : (
