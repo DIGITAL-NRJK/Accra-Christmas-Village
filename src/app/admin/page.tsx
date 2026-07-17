@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   FileClock,
   FileQuestion,
+  Gift,
   Handshake,
   ImageIcon,
   MapPinned,
@@ -70,6 +71,7 @@ export default async function AdminPage() {
     incidents,
     organizations,
     sponsors,
+    sponsorCommitments,
     stands,
     users,
     vendors,
@@ -84,6 +86,9 @@ export default async function AdminPage() {
   const publishedHeroSlides = heroSlides.filter((slide) => slide.published).length;
   const publishedAnnouncements = announcements.filter((announcement) => announcement.published).length;
   const activeIncidents = incidents.filter((incident) => incident.status !== "resolved").length;
+  const overdueSponsorCommitments = sponsorCommitments.filter(
+    (item) => item.dueDate && item.dueDate < new Date().toISOString().slice(0, 10) && !["delivered", "validated"].includes(item.status),
+  ).length;
   const vendorUsers = users.filter((user) => user.role === "vendor").length;
   const sponsorUsers = users.filter((user) => user.role === "sponsor").length;
   const partnerUsers = users.filter((user) => user.role === "partner").length;
@@ -104,6 +109,7 @@ export default async function AdminPage() {
     { detail: "Awaiting organizer approval.", href: sectionHref("access", "/admin/access-requests?status=pending"), icon: Handshake, label: "Access requests", value: pendingAccessRequests },
     { detail: "Active and pending vendor records.", href: sectionHref("vendors", "/admin/vendors"), icon: Store, label: "Vendors", value: vendors.length },
     { detail: "Confirmed and active sponsor records.", href: sectionHref("sponsors", "/admin/sponsors"), icon: Users, label: "Sponsors", value: sponsors.length },
+    { detail: "Sponsor benefits or deliverables past their due date.", href: sectionHref("sponsor_delivery", "/admin/sponsor-deliverables?state=overdue"), icon: Gift, label: "Overdue sponsor items", value: overdueSponsorCommitments },
     { detail: "Open or monitored operational incidents.", href: sectionHref("incidents", "/admin/incidents"), icon: Siren, label: "Active incidents", value: activeIncidents },
     { detail: "Participants with missing or rejected document requirements.", href: sectionHref("compliance", "/admin/compliance"), icon: ShieldCheck, label: "Compliance issues", value: complianceIssues },
     { detail: "Awaiting organizer review.", href: sectionHref("documents", "/admin/documents?status=submitted"), icon: FileClock, label: "Pending documents", value: pendingDocuments },

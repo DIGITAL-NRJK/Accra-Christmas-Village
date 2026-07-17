@@ -11,7 +11,7 @@ export const metadata = { title: "Support" };
 
 export default async function SupportPage({ searchParams }: { searchParams?: Promise<PortalSearchParams & { ticket?: string }> }) {
   const params = await searchParams;
-  const { isAdminPreview, organization, previewQuery } = await requirePortalContext(params);
+  const { isAdminPreview, organization, previewQuery, role } = await requirePortalContext(params);
   const tickets = await listTicketsForOrganization(organization.id);
   const selected = tickets.find((ticket) => ticket.id === params?.ticket) ?? tickets[0];
   const messages = selected ? await listSupportMessages(selected.id, false) : [];
@@ -21,7 +21,7 @@ export default async function SupportPage({ searchParams }: { searchParams?: Pro
 
   return <>
     <PageHeader eyebrow="Support desk" title="Structured support" description="Open a request, follow its owner and status, and keep every answer in one operational thread." />
-    <PortalNav activeHref="/portal/support" previewQuery={previewQuery} />
+    <PortalNav activeHref="/portal/support" participantRole={role} previewQuery={previewQuery} />
     <section className="mx-auto grid w-full max-w-6xl gap-6 px-4 pb-10 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:px-8">
       <div className="grid h-fit gap-4">
         {!isAdminPreview ? <details className="rounded-lg border border-slate-200 bg-white shadow-sm" open={tickets.length === 0}>

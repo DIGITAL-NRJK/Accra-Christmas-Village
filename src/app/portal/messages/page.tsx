@@ -25,7 +25,7 @@ export default async function MessagesPage({ searchParams }: MessagesPageProps) 
         title="Organizer announcements"
         description="Published updates for participants, including setup windows, deadlines, route changes and operational notices."
       />
-      <PortalNav activeHref="/portal/messages" previewQuery={previewQuery} />
+      <PortalNav activeHref="/portal/messages" participantRole={role} previewQuery={previewQuery} />
       <section className="mx-auto grid w-full max-w-4xl gap-3 px-4 pb-10 sm:px-6 lg:px-8">
         {messages.map((message) => (
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm" key={message.id}>

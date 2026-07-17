@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, Filter, MapPin, Plus, RotateCcw, Store } from "lucide-react";
+import { ChevronRight, Filter, Gift, MapPin, Plus, RotateCcw, Store } from "lucide-react";
 import { AdminNav } from "@/components/admin-nav";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
@@ -263,6 +263,9 @@ export default async function AdminSponsorsPage({ searchParams }: AdminSponsorsP
               </div>
 
               <div className="grid gap-4 p-5">
+                <Link className="inline-flex w-fit items-center gap-2 rounded-md border border-acv-gold bg-amber-50 px-4 py-2 text-sm font-bold text-acv-ink transition hover:bg-acv-gold/20" href={`/admin/sponsor-deliverables?sponsor=${selectedSponsor.id}`}>
+                  <Gift className="size-4 text-acv-clay" />Manage benefits and deliverables
+                </Link>
                 <SponsorForm
                   mode="update"
                   organization={selectedOrganization}

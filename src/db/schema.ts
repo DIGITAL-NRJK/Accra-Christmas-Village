@@ -187,6 +187,32 @@ export const sponsors = pgTable(
   ],
 );
 
+export const sponsorCommitments = pgTable(
+  "sponsor_commitments",
+  {
+    id: text("id").primaryKey(),
+    sponsorId: text("sponsor_id").notNull().references(() => sponsors.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    category: text("category").notNull(),
+    description: text("description").notNull().default(""),
+    ownerUserId: text("owner_user_id").references(() => users.id, { onDelete: "set null" }),
+    dueDate: date("due_date"),
+    status: text("status").notNull().default("planned"),
+    totalQuantity: integer("total_quantity").notNull().default(1),
+    completedQuantity: integer("completed_quantity").notNull().default(0),
+    proofUrl: text("proof_url"),
+    notes: text("notes").notNull().default(""),
+    visibleToSponsor: boolean("visible_to_sponsor").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("sponsor_commitments_sponsor_idx").on(table.sponsorId),
+    index("sponsor_commitments_status_due_idx").on(table.status, table.dueDate),
+  ],
+);
+
 export const events = pgTable(
   "events",
   {

@@ -19,7 +19,7 @@ export default async function PortalNotificationsPage({ searchParams }: { search
   return (
     <>
       <PageHeader eyebrow="Notifications" title="Your notification centre" description="Targeted operational, compliance and event alerts for your account." />
-      <PortalNav activeHref="/portal/notifications" previewQuery={previewQuery} />
+      <PortalNav activeHref="/portal/notifications" participantRole={role} previewQuery={previewQuery} />
       <section className="mx-auto grid w-full max-w-4xl gap-3 px-4 pb-10 sm:px-6 lg:px-8">
         {unreadCount > 0 && !isAdminPreview ? (
           <form action={markAllNotificationsReadAction} className="flex justify-end">

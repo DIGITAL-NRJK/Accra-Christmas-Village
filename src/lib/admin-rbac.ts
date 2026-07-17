@@ -17,6 +17,7 @@ export type AdminSection =
   | "preview"
   | "programme"
   | "sponsors"
+  | "sponsor_delivery"
   | "stands"
   | "tickets"
   | "users"
@@ -41,6 +42,7 @@ export const adminNavItems: Array<NavItem & { section: AdminSection }> = [
   { href: "/admin/access-requests", label: "Access", section: "access" },
   { href: "/admin/vendors", label: "Vendors", section: "vendors" },
   { href: "/admin/sponsors", label: "Sponsors", section: "sponsors" },
+  { href: "/admin/sponsor-deliverables", label: "Sponsor delivery", section: "sponsor_delivery" },
   { href: "/admin/incidents", label: "Incidents", section: "incidents" },
   { href: "/admin/notifications", label: "Notifications", section: "notifications" },
   { href: "/admin/tickets", label: "Support", section: "tickets" },
@@ -56,8 +58,8 @@ const allAdminSections = adminNavItems.map((item) => item.section);
 const adminSectionPermissions: Record<Role, AdminSection[]> = {
   admin: allAdminSections,
   super_admin: allAdminSections,
-  operations_manager: ["dashboard", "access", "vendors", "sponsors", "incidents", "notifications", "tickets", "stands", "analytics"],
-  content_manager: ["dashboard", "hero", "programme", "announcements", "notifications", "analytics"],
+  operations_manager: ["dashboard", "access", "vendors", "sponsors", "sponsor_delivery", "incidents", "notifications", "tickets", "stands", "analytics"],
+  content_manager: ["dashboard", "hero", "programme", "announcements", "notifications", "analytics", "sponsor_delivery"],
   compliance_manager: ["dashboard", "documents", "compliance", "notifications", "tickets"],
   stand_manager: ["dashboard", "stands"],
   partner: [],

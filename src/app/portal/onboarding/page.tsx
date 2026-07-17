@@ -34,7 +34,7 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
         title="Checklist and operational readiness"
         description="Required participant tasks before final stand confirmation, badge printing and public opening."
       />
-      <PortalNav activeHref="/portal/onboarding" previewQuery={previewQuery} />
+      <PortalNav activeHref="/portal/onboarding" participantRole={role} previewQuery={previewQuery} />
       <section className="mx-auto grid w-full max-w-6xl gap-6 px-4 pb-10 sm:px-6 lg:grid-cols-[0.7fr_1.3fr] lg:px-8">
         <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <ClipboardList aria-hidden="true" className="size-7 text-acv-palm" />

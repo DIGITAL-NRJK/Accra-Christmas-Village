@@ -1,9 +1,9 @@
 type ProgressBarProps = {
   value: number;
-  label: string;
+  label?: string;
 };
 
-export function ProgressBar({ value, label }: ProgressBarProps) {
+export function ProgressBar({ value, label = "Progress" }: ProgressBarProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-3 text-sm">
