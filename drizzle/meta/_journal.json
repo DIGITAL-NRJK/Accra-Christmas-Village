@@ -64,6 +64,13 @@
       "when": 1784234370660,
       "tag": "0008_yellow_vargas",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784308385871,
+      "tag": "0009_heavy_silver_sable",
+      "breakpoints": true
     }
   ]
 }

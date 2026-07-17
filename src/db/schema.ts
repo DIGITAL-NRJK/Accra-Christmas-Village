@@ -345,6 +345,40 @@ export const notificationReads = pgTable(
   ],
 );
 
+export const supportTickets = pgTable(
+  "support_tickets",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    createdByUserId: text("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    assignedToUserId: text("assigned_to_user_id").references(() => users.id, { onDelete: "set null" }),
+    subject: text("subject").notNull(),
+    category: text("category").notNull(),
+    priority: text("priority").notNull().default("normal"),
+    status: text("status").notNull().default("open"),
+    lastActivityAt: timestamp("last_activity_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("support_tickets_organization_idx").on(table.organizationId),
+    index("support_tickets_status_activity_idx").on(table.status, table.lastActivityAt),
+  ],
+);
+
+export const supportMessages = pgTable(
+  "support_messages",
+  {
+    id: text("id").primaryKey(),
+    ticketId: text("ticket_id").notNull().references(() => supportTickets.id, { onDelete: "cascade" }),
+    authorUserId: text("author_user_id").references(() => users.id, { onDelete: "set null" }),
+    body: text("body").notNull(),
+    internal: boolean("internal").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("support_messages_ticket_idx").on(table.ticketId, table.createdAt)],
+);
+
 export const incidents = pgTable(
   "incidents",
   {

@@ -1,4 +1,4 @@
-import { asc, desc, eq, or } from "drizzle-orm";
+import { and, asc, desc, eq, or } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import {
   accessRequests,
@@ -15,6 +15,8 @@ import {
   organizations,
   sponsors,
   stands,
+  supportMessages,
+  supportTickets,
   users,
   vendors,
   zones,
@@ -775,6 +777,66 @@ export async function recordAuditLog(input: {
     id: crypto.randomUUID(),
     metadata: input.metadata ?? {},
   });
+}
+
+export async function listTicketsForOrganization(organizationId: string) {
+  if (!process.env.DATABASE_URL || !organizationId) return [];
+  return getDb().select().from(supportTickets).where(eq(supportTickets.organizationId, organizationId)).orderBy(desc(supportTickets.lastActivityAt));
+}
+
+export async function listAllSupportTickets() {
+  if (!process.env.DATABASE_URL) return [];
+  return getDb().select().from(supportTickets).orderBy(desc(supportTickets.lastActivityAt));
+}
+
+export async function getSupportTicket(ticketId: string) {
+  if (!process.env.DATABASE_URL || !ticketId) return null;
+  const [ticket] = await getDb().select().from(supportTickets).where(eq(supportTickets.id, ticketId)).limit(1);
+  return ticket ?? null;
+}
+
+export async function listSupportMessages(ticketId: string, includeInternal: boolean) {
+  if (!process.env.DATABASE_URL || !ticketId) return [];
+  const db = getDb();
+  return db.select().from(supportMessages).where(
+    includeInternal
+      ? eq(supportMessages.ticketId, ticketId)
+      : and(eq(supportMessages.ticketId, ticketId), eq(supportMessages.internal, false)),
+  ).orderBy(asc(supportMessages.createdAt));
+}
+
+export async function createSupportTicket(input: {
+  organizationId: string;
+  createdByUserId: string;
+  subject: string;
+  category: string;
+  priority: string;
+  message: string;
+}) {
+  if (!process.env.DATABASE_URL) return null;
+  const db = getDb();
+  const ticketId = crypto.randomUUID();
+  const now = new Date();
+  await db.batch([
+    db.insert(supportTickets).values({ id: ticketId, organizationId: input.organizationId, createdByUserId: input.createdByUserId, subject: input.subject, category: input.category, priority: input.priority, status: "open", lastActivityAt: now, updatedAt: now }),
+    db.insert(supportMessages).values({ id: crypto.randomUUID(), ticketId, authorUserId: input.createdByUserId, body: input.message, internal: false }),
+  ] as const);
+  return ticketId;
+}
+
+export async function addSupportMessage(input: { ticketId: string; authorUserId: string; body: string; internal: boolean }) {
+  if (!process.env.DATABASE_URL) return;
+  const db = getDb();
+  const now = new Date();
+  await db.batch([
+    db.insert(supportMessages).values({ id: crypto.randomUUID(), ...input }),
+    db.update(supportTickets).set({ lastActivityAt: now, updatedAt: now }).where(eq(supportTickets.id, input.ticketId)),
+  ] as const);
+}
+
+export async function updateSupportTicket(ticketId: string, input: { status: string; priority: string; assignedToUserId: string | null }) {
+  if (!process.env.DATABASE_URL || !ticketId) return;
+  await getDb().update(supportTickets).set({ ...input, updatedAt: new Date() }).where(eq(supportTickets.id, ticketId));
 }
 
 export type CreateNotificationInput = {
