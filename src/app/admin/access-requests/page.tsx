@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
 import { approveRequest, rejectRequest } from "@/app/admin/access-requests/actions";
 import { listAdminData } from "@/db/queries";
+import { listVendorApplications } from "@/db/vendor-applications";
 import { requireAdminSection } from "@/lib/admin-rbac";
 import type { AccessRequestStatus } from "@/lib/types";
 
@@ -39,7 +40,9 @@ function getStatusHref(status: AccessRequestStatus | "all") {
 type AdminData = Awaited<ReturnType<typeof listAdminData>>;
 type AccessRequest = AdminData["accessRequests"][number];
 
-function getRequestTarget(request: AccessRequest, data: AdminData) {
+function getRequestTarget(request: AccessRequest, data: AdminData, vendorApplications: Awaited<ReturnType<typeof listVendorApplications>>) {
+  const application = vendorApplications.find((candidate) => candidate.accessRequestId === request.id);
+  if (application) return `/admin/vendor-applications?application=${application.id}`;
   const organization = data.organizations.find(
     (candidate) =>
       candidate.contactEmail === request.email ||
@@ -97,7 +100,7 @@ function requestActions(requestId: string) {
 export default async function AdminAccessRequestsPage({ searchParams }: AdminAccessRequestsPageProps) {
   await requireAdminSection("access");
 
-  const data = await listAdminData();
+  const [data, vendorApplications] = await Promise.all([listAdminData(), listVendorApplications()]);
   const params = await searchParams;
   const activeStatus = getStatusFilter(params.status);
   const requests = data.accessRequests.filter(
@@ -158,7 +161,8 @@ export default async function AdminAccessRequestsPage({ searchParams }: AdminAcc
         ) : null}
 
         {requests.map((request) => {
-          const targetHref = getRequestTarget(request, data);
+          const targetHref = getRequestTarget(request, data, vendorApplications);
+          const linkedApplication = vendorApplications.find((candidate) => candidate.accessRequestId === request.id);
 
           return (
             <article
@@ -195,12 +199,12 @@ export default async function AdminAccessRequestsPage({ searchParams }: AdminAcc
                   </p>
                 ) : null}
                 <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold uppercase text-acv-palm">
-                  Open related profile
+                  {linkedApplication ? "Review complete application" : "Open related profile"}
                   <ChevronRight aria-hidden="true" className="size-3.5" />
                 </span>
               </Link>
 
-              {request.status === "pending" ? (
+              {request.status === "pending" && !linkedApplication ? (
                 <div className="border-t border-slate-200 px-5 pb-5">
                   {requestActions(request.id)}
                 </div>

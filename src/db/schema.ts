@@ -109,6 +109,16 @@ export const vendorPolicyTypeEnum = pgEnum("vendor_policy_type", [
   "setup",
 ]);
 
+export const vendorApplicationStatusEnum = pgEnum("vendor_application_status", [
+  "draft",
+  "submitted",
+  "under_review",
+  "changes_requested",
+  "approved",
+  "rejected",
+  "withdrawn",
+]);
+
 export const accessRequestStatusEnum = pgEnum("access_request_status", [
   "pending",
   "approved",
@@ -184,6 +194,8 @@ export const vendors = pgTable(
       .references(() => organizations.id),
     tradingName: text("trading_name").notNull(),
     category: text("category").notNull(),
+    categoryId: text("category_id").references(() => vendorCategories.id, { onDelete: "set null" }),
+    packageId: text("package_id").references(() => vendorPackages.id, { onDelete: "set null" }),
     standId: text("stand_id").references(() => stands.id),
     onboardingStatus: complianceStatusEnum("onboarding_status").notNull(),
     complianceStatus: complianceStatusEnum("compliance_status").notNull(),
@@ -192,6 +204,8 @@ export const vendors = pgTable(
   },
   (table) => [
     index("vendors_organization_idx").on(table.organizationId),
+    index("vendors_category_idx").on(table.categoryId),
+    index("vendors_package_idx").on(table.packageId),
     index("vendors_stand_idx").on(table.standId),
   ],
 );
@@ -765,5 +779,68 @@ export const accessRequests = pgTable(
   (table) => [
     uniqueIndex("access_requests_clerk_user_id_unique").on(table.clerkUserId),
     index("access_requests_status_idx").on(table.status),
+  ],
+);
+
+export const vendorApplications = pgTable(
+  "vendor_applications",
+  {
+    id: text("id").primaryKey(),
+    clerkUserId: text("clerk_user_id").notNull().unique(),
+    applicantUserId: text("applicant_user_id").references(() => users.id, { onDelete: "set null" }),
+    accessRequestId: text("access_request_id").references(() => accessRequests.id, { onDelete: "set null" }).unique(),
+    organizationId: text("organization_id").references(() => organizations.id, { onDelete: "set null" }),
+    categoryId: text("category_id").references(() => vendorCategories.id, { onDelete: "set null" }),
+    packageId: text("package_id").references(() => vendorPackages.id, { onDelete: "set null" }),
+    organizationName: text("organization_name").notNull().default(""),
+    tradingName: text("trading_name").notNull().default(""),
+    vendorKind: vendorKindEnum("vendor_kind"),
+    businessDescription: text("business_description").notNull().default(""),
+    productsSummary: text("products_summary").notNull().default(""),
+    websiteUrl: text("website_url").notNull().default(""),
+    instagramHandle: text("instagram_handle").notNull().default(""),
+    contactName: text("contact_name").notNull().default(""),
+    contactEmail: text("contact_email").notNull().default(""),
+    contactPhone: text("contact_phone").notNull().default(""),
+    operationsContactName: text("operations_contact_name").notNull().default(""),
+    operationsContactEmail: text("operations_contact_email").notNull().default(""),
+    operationsContactPhone: text("operations_contact_phone").notNull().default(""),
+    status: vendorApplicationStatusEnum("status").notNull().default("draft"),
+    currentStep: integer("current_step").notNull().default(1),
+    packageVersion: integer("package_version"),
+    packageSnapshot: jsonb("package_snapshot").$type<Record<string, unknown> | null>(),
+    categorySnapshot: jsonb("category_snapshot").$type<Record<string, unknown> | null>(),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewedByUserId: text("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    reviewerNote: text("reviewer_note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("vendor_applications_status_idx").on(table.status, table.updatedAt),
+    index("vendor_applications_category_idx").on(table.categoryId),
+    index("vendor_applications_package_idx").on(table.packageId),
+  ],
+);
+
+export const vendorApplicationPolicyAcceptances = pgTable(
+  "vendor_application_policy_acceptances",
+  {
+    id: text("id").primaryKey(),
+    applicationId: text("application_id")
+      .notNull()
+      .references(() => vendorApplications.id, { onDelete: "cascade" }),
+    policyId: text("policy_id").references(() => vendorPolicies.id, { onDelete: "set null" }),
+    policyType: vendorPolicyTypeEnum("policy_type").notNull(),
+    policyVersion: integer("policy_version").notNull(),
+    policyTitle: text("policy_title").notNull(),
+    policyBody: text("policy_body").notNull(),
+    acceptedByUserId: text("accepted_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("vendor_application_policy_unique").on(table.applicationId, table.policyType),
+    index("vendor_application_policy_application_idx").on(table.applicationId),
   ],
 );
