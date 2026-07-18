@@ -39,33 +39,73 @@ export const adminAccessRoles: Role[] = [
   "stand_manager",
 ];
 
-export const adminNavItems: Array<NavItem & { section: AdminSection }> = [
-  { href: "/admin", label: "Dashboard", section: "dashboard" },
-  { href: "/admin/audit-logs", label: "Audit log", section: "audit" },
-  { href: "/admin/analytics", label: "Analytics", section: "analytics" },
-  { href: "/admin/users", label: "Users", section: "users" },
-  { href: "/admin/preview", label: "Preview", section: "preview" },
-  { href: "/admin/hero", label: "Hero", section: "hero" },
-  { href: "/admin/access-requests", label: "Access", section: "access" },
-  { href: "/admin/accreditations", label: "Badges", section: "accreditations" },
-  { href: "/admin/check-in", label: "Check-in", section: "check_in" },
-  { href: "/admin/vendors", label: "Vendors", section: "vendors" },
-  { href: "/admin/vendor-applications", label: "Vendor applications", section: "vendor_applications" },
-  { href: "/admin/vendor-catalog", label: "Vendor catalog", section: "vendor_catalog" },
-  { href: "/admin/vendor-payments", label: "Vendor payments", section: "vendor_payments" },
-  { href: "/admin/sponsors", label: "Sponsors", section: "sponsors" },
-  { href: "/admin/sponsor-deliverables", label: "Sponsor delivery", section: "sponsor_delivery" },
-  { href: "/admin/incidents", label: "Incidents", section: "incidents" },
-  { href: "/admin/notifications", label: "Notifications", section: "notifications" },
-  { href: "/admin/tickets", label: "Support", section: "tickets" },
-  { href: "/admin/documents", label: "Documents", section: "documents" },
-  { href: "/admin/compliance", label: "Compliance", section: "compliance" },
-  { href: "/admin/stands", label: "Stands", section: "stands" },
-  { href: "/admin/tasks", label: "Tasks", section: "tasks" },
-  { href: "/admin/programme", label: "Programme", section: "programme" },
-  { href: "/admin/reports", label: "Reports", section: "reports" },
-  { href: "/admin/announcements", label: "Announcements", section: "announcements" },
+type AdminNavItem = NavItem & { section: AdminSection };
+
+export type AdminNavGroup = {
+  id: "overview" | "people" | "partners" | "operations" | "content";
+  label: string;
+  items: AdminNavItem[];
+};
+
+export const adminNavGroups: AdminNavGroup[] = [
+  {
+    id: "overview",
+    label: "Overview",
+    items: [
+      { href: "/admin", label: "Dashboard", section: "dashboard" },
+      { href: "/admin/analytics", label: "Analytics", section: "analytics" },
+      { href: "/admin/reports", label: "Reports", section: "reports" },
+      { href: "/admin/audit-logs", label: "Audit log", section: "audit" },
+    ],
+  },
+  {
+    id: "people",
+    label: "People & access",
+    items: [
+      { href: "/admin/users", label: "Users", section: "users" },
+      { href: "/admin/access-requests", label: "Access", section: "access" },
+      { href: "/admin/accreditations", label: "Badges", section: "accreditations" },
+      { href: "/admin/check-in", label: "Check-in", section: "check_in" },
+    ],
+  },
+  {
+    id: "partners",
+    label: "Vendors & sponsors",
+    items: [
+      { href: "/admin/vendors", label: "Vendors", section: "vendors" },
+      { href: "/admin/vendor-applications", label: "Vendor applications", section: "vendor_applications" },
+      { href: "/admin/vendor-catalog", label: "Vendor catalog", section: "vendor_catalog" },
+      { href: "/admin/vendor-payments", label: "Vendor payments", section: "vendor_payments" },
+      { href: "/admin/sponsors", label: "Sponsors", section: "sponsors" },
+      { href: "/admin/sponsor-deliverables", label: "Sponsor delivery", section: "sponsor_delivery" },
+    ],
+  },
+  {
+    id: "operations",
+    label: "Operations",
+    items: [
+      { href: "/admin/incidents", label: "Incidents", section: "incidents" },
+      { href: "/admin/tickets", label: "Support", section: "tickets" },
+      { href: "/admin/documents", label: "Documents", section: "documents" },
+      { href: "/admin/compliance", label: "Compliance", section: "compliance" },
+      { href: "/admin/stands", label: "Stands", section: "stands" },
+      { href: "/admin/tasks", label: "Tasks", section: "tasks" },
+    ],
+  },
+  {
+    id: "content",
+    label: "Content",
+    items: [
+      { href: "/admin/preview", label: "Preview", section: "preview" },
+      { href: "/admin/hero", label: "Hero", section: "hero" },
+      { href: "/admin/programme", label: "Programme", section: "programme" },
+      { href: "/admin/announcements", label: "Announcements", section: "announcements" },
+      { href: "/admin/notifications", label: "Notifications", section: "notifications" },
+    ],
+  },
 ];
+
+export const adminNavItems: AdminNavItem[] = adminNavGroups.flatMap((group) => group.items);
 
 const allAdminSections = adminNavItems.map((item) => item.section);
 
@@ -94,6 +134,19 @@ export function getAdminNavItems(role: Role | null | undefined): NavItem[] {
   return adminNavItems
     .filter((item) => canAccessAdminSection(role, item.section))
     .map(({ href, label }) => ({ href, label }));
+}
+
+export function getAdminNavGroups(role: Role | null | undefined): AdminNavGroup[] {
+  if (!role) {
+    return [];
+  }
+
+  return adminNavGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => canAccessAdminSection(role, item.section)),
+    }))
+    .filter((group) => group.items.length > 0);
 }
 
 export async function requireAdminSection(section: AdminSection) {
