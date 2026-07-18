@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
 import { listAdminData } from "@/db/queries";
 import { requireAdminSection } from "@/lib/admin-rbac";
+import { documentRequirementAppliesToVendor } from "@/lib/document-requirements";
 import type {
   ComplianceStatus,
   DocumentStatus,
@@ -60,8 +61,7 @@ export default async function AdminCompliancePage() {
         requirement.required &&
         requirement.organizationType === organization.type &&
         (organization.type !== "vendor" ||
-          requirement.appliesToCategories.length === 0 ||
-          requirement.appliesToCategories.includes(vendors.find((vendor) => vendor.organizationId === organization.id)?.category ?? "")),
+          documentRequirementAppliesToVendor(requirement, vendors.find((vendor) => vendor.organizationId === organization.id))),
     );
     const statuses = requirements.map((requirement) => {
       const document = documents.find(

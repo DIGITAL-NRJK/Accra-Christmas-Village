@@ -303,6 +303,7 @@ export async function approveVendorApplication(input: {
     categoryId: application.categoryId,
     packageId: application.packageId,
     tradingName: application.tradingName,
+    vendorKind: application.vendorKind ?? "general",
   }).where(eq(vendors.organizationId, input.organizationId));
   const [updated] = await db.update(vendorApplications).set({
     organizationId: input.organizationId,

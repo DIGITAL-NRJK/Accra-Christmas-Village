@@ -217,6 +217,7 @@ async function main() {
           description: requirement.description,
           required: requirement.required,
           appliesToCategories: requirement.appliesToCategories ?? [],
+          appliesToVendorKinds: requirement.appliesToVendorKinds ?? [],
           sortOrder: requirement.sortOrder,
         },
       });
@@ -232,6 +233,7 @@ async function main() {
           organizationId: vendor.organizationId,
           tradingName: vendor.tradingName,
           category: vendor.category,
+          vendorKind: vendor.vendorKind,
           standId: vendor.standId,
           onboardingStatus: vendor.onboardingStatus,
           complianceStatus: vendor.complianceStatus,

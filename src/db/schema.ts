@@ -260,6 +260,7 @@ export const vendors = pgTable(
       .references(() => organizations.id),
     tradingName: text("trading_name").notNull(),
     category: text("category").notNull(),
+    vendorKind: vendorKindEnum("vendor_kind").notNull().default("general"),
     categoryId: text("category_id").references(() => vendorCategories.id, { onDelete: "set null" }),
     packageId: text("package_id").references(() => vendorPackages.id, { onDelete: "set null" }),
     standId: text("stand_id").references(() => stands.id),
@@ -667,6 +668,7 @@ export const documentRequirements = pgTable("document_requirements", {
   description: text("description").notNull(),
   required: boolean("required").notNull().default(true),
   appliesToCategories: jsonb("applies_to_categories").$type<string[]>().notNull().default([]),
+  appliesToVendorKinds: jsonb("applies_to_vendor_kinds").$type<Array<"general" | "food">>().notNull().default([]),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Banknote, BookOpenCheck, ClipboardList, Images } from "lucide-react";
+import { Banknote, BookOpenCheck, ClipboardList, Images, ShieldCheck } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { PortalNav } from "@/components/portal-nav";
 import { ProgressBar } from "@/components/progress-bar";
@@ -10,6 +10,7 @@ import { getVendorBrandWorkspace } from "@/db/vendor-branding";
 import { getVendorApplicationByOrganization } from "@/db/vendor-applications";
 import { getActiveVendorHandbookForOrganization } from "@/db/vendor-handbook";
 import { requirePortalContext, type PortalSearchParams } from "@/lib/portal-context";
+import { documentRequirementAppliesToVendor } from "@/lib/document-requirements";
 
 export const metadata = {
   title: "Onboarding",
@@ -31,14 +32,18 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
     role === "vendor" ? getActiveVendorHandbookForOrganization(organizationId, vendorApplication?.vendorKind ?? "general") : Promise.resolve(null),
   ]);
   const requirementType = role === "sponsor" ? "sponsor" : role === "partner" ? "partner" : "vendor";
-  const vendorCategory = vendors.find((vendor) => vendor.organizationId === organizationId)?.category;
+  const vendor = vendors.find((candidate) => candidate.organizationId === organizationId);
   const requirements = documentRequirements.filter((requirement) =>
     requirement.organizationType === requirementType &&
-    (requirementType !== "vendor" || requirement.appliesToCategories.length === 0 || requirement.appliesToCategories.includes(vendorCategory ?? "")),
+    (requirementType !== "vendor" || documentRequirementAppliesToVendor(requirement, vendor)),
   );
   const organizationDocuments = documents.filter((document) => document.organizationId === organizationId);
   const approvedCount = requirements.filter((requirement) =>
     organizationDocuments.some((document) => document.requirementId === requirement.id && document.status === "approved"),
+  ).length;
+  const foodRequirements = requirements.filter((requirement) => requirement.appliesToVendorKinds.includes("food"));
+  const approvedFoodRequirements = foodRequirements.filter((requirement) =>
+    organizationDocuments.some((document) => document.requirementId === requirement.id && document.status === "approved" && (!document.expiresAt || document.expiresAt >= new Date())),
   ).length;
   const paymentCheckpoint = role === "vendor" ? 1 : 0;
   const completedPaymentCheckpoint = vendorPayment?.status === "paid" ? 1 : 0;
@@ -74,6 +79,7 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
           {role === "vendor" ? <article className="rounded-lg border-2 border-acv-gold bg-white p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><Banknote className="size-5 text-acv-palm" /><h2 className="mt-3 text-lg font-semibold text-acv-ink">Package payment and stand reservation</h2><p className="mt-1 text-sm text-slate-600">Full payment must be verified before an available stand can be reserved.</p></div><StatusPill status={vendorPayment?.status ?? "pending"} /></div><Link className="mt-4 inline-flex rounded-lg bg-acv-ink px-4 py-2 text-sm font-bold text-white" href={`/portal/payment${previewQuery}`}>Open payment receipt</Link></article> : null}
           {role === "vendor" ? <article className="rounded-lg border-2 border-acv-gold bg-white p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><Images className="size-5 text-acv-palm" /><h2 className="mt-3 text-lg font-semibold text-acv-ink">Brand profile and public directory</h2><p className="mt-1 text-sm text-slate-600">Submit approved copy, a logo and visitor images before publication.</p></div><StatusPill status={vendorBrand.profile?.status ?? "draft"} /></div><Link className="mt-4 inline-flex rounded-lg bg-acv-ink px-4 py-2 text-sm font-bold text-white" href={`/portal/brand-profile${previewQuery}`}>Open brand profile</Link></article> : null}
           {role === "vendor" && vendorHandbook ? <article className="rounded-lg border-2 border-acv-gold bg-white p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><BookOpenCheck className="size-5 text-acv-palm" /><h2 className="mt-3 text-lg font-semibold text-acv-ink">Vendor handbook v{vendorHandbook.handbook.version}</h2><p className="mt-1 text-sm text-slate-600">Confirm every required setup and operating instruction before arrival on site.</p></div><StatusPill status={completedHandbookCheckpoint ? "compliant" : "in_progress"} /></div><p className="mt-3 text-sm font-semibold text-slate-600">{requiredHandbookSections.filter((section) => acknowledgedHandbookSections.has(section.id)).length}/{requiredHandbookSections.length} instructions confirmed</p><Link className="mt-4 inline-flex rounded-lg bg-acv-ink px-4 py-2 text-sm font-bold text-white" href={`/portal/handbook${previewQuery}`}>Open field handbook</Link></article> : null}
+          {role === "vendor" && vendor?.vendorKind === "food" ? <article className="rounded-lg border-2 border-acv-palm bg-emerald-50 p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><ShieldCheck className="size-5 text-acv-palm" /><h2 className="mt-3 text-lg font-semibold text-acv-ink">Food Vendor regulatory passport</h2><p className="mt-1 text-sm text-slate-600">Food handling certification, health permit and waste disposal plan must all be current.</p></div><StatusPill status={approvedFoodRequirements === foodRequirements.length && foodRequirements.length > 0 ? "compliant" : "in_progress"} /></div><p className="mt-3 text-sm font-semibold text-slate-600">{approvedFoodRequirements}/{foodRequirements.length} regulatory proofs approved</p><Link className="mt-4 inline-flex rounded-lg bg-acv-ink px-4 py-2 text-sm font-bold text-white" href={`/portal/documents${previewQuery}`}>Open regulatory documents</Link></article> : null}
           {requirements.map((requirement) => {
             const document = organizationDocuments.find((candidate) => candidate.requirementId === requirement.id);
 

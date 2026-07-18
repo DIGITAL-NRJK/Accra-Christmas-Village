@@ -16,6 +16,7 @@ import { StatusPill } from "@/components/status-pill";
 import { approveDocument, rejectDocument, sendExpirationRemindersAction } from "@/app/admin/documents/actions";
 import { listAdminData } from "@/db/queries";
 import { requireAdminSection } from "@/lib/admin-rbac";
+import { documentRequirementAppliesToVendor } from "@/lib/document-requirements";
 import type { DocumentStatus, Organization } from "@/lib/types";
 
 export const metadata = {
@@ -160,9 +161,8 @@ export default async function AdminDocumentsPage({ searchParams }: AdminDocument
       const allRows = documentRequirements
         .filter((requirement) => {
           if (requirement.organizationType !== organization.type) return false;
-          if (organization.type !== "vendor" || requirement.appliesToCategories.length === 0) return true;
-          const category = vendors.find((vendor) => vendor.organizationId === organization.id)?.category;
-          return Boolean(category && requirement.appliesToCategories.includes(category));
+          if (organization.type !== "vendor") return true;
+          return documentRequirementAppliesToVendor(requirement, vendors.find((vendor) => vendor.organizationId === organization.id));
         })
         .map((requirement) => {
           const document = documents.find(

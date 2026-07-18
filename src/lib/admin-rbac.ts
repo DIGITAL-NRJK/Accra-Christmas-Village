@@ -13,6 +13,7 @@ export type AdminSection =
   | "check_in"
   | "dashboard"
   | "documents"
+  | "food_vendor_readiness"
   | "hero"
   | "incidents"
   | "notifications"
@@ -92,6 +93,7 @@ export const adminNavGroups: AdminNavGroup[] = [
       { href: "/admin/tickets", label: "Support", section: "tickets" },
       { href: "/admin/documents", label: "Documents", section: "documents" },
       { href: "/admin/compliance", label: "Compliance", section: "compliance" },
+      { href: "/admin/food-vendor-readiness", label: "Food readiness", section: "food_vendor_readiness" },
       { href: "/admin/stands", label: "Stands", section: "stands" },
       { href: "/admin/tasks", label: "Tasks", section: "tasks" },
     ],
@@ -116,9 +118,9 @@ const allAdminSections = adminNavItems.map((item) => item.section);
 const adminSectionPermissions: Record<Role, AdminSection[]> = {
   admin: allAdminSections,
   super_admin: allAdminSections,
-  operations_manager: ["dashboard", "access", "accreditations", "check_in", "vendors", "vendor_applications", "vendor_catalog", "vendor_payments", "vendor_branding", "vendor_handbook", "sponsors", "sponsor_delivery", "incidents", "notifications", "tickets", "stands", "tasks", "analytics", "reports"],
+  operations_manager: ["dashboard", "access", "accreditations", "check_in", "vendors", "vendor_applications", "vendor_catalog", "vendor_payments", "vendor_branding", "vendor_handbook", "sponsors", "sponsor_delivery", "incidents", "notifications", "tickets", "stands", "tasks", "food_vendor_readiness", "analytics", "reports"],
   content_manager: ["dashboard", "hero", "programme", "announcements", "notifications", "analytics", "vendor_branding", "sponsor_delivery", "reports"],
-  compliance_manager: ["dashboard", "documents", "compliance", "notifications", "tickets", "reports"],
+  compliance_manager: ["dashboard", "documents", "compliance", "food_vendor_readiness", "notifications", "tickets", "reports"],
   stand_manager: ["dashboard", "check_in", "stands", "tasks", "reports"],
   partner: [],
   sponsor: [],
