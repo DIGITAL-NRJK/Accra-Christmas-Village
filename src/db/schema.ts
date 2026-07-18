@@ -119,6 +119,26 @@ export const vendorApplicationStatusEnum = pgEnum("vendor_application_status", [
   "withdrawn",
 ]);
 
+export const vendorPaymentStatusEnum = pgEnum("vendor_payment_status", [
+  "pending",
+  "under_review",
+  "partially_paid",
+  "paid",
+  "rejected",
+  "cancelled",
+]);
+
+export const vendorPaymentMethodEnum = pgEnum("vendor_payment_method", [
+  "momo",
+  "bank_transfer",
+]);
+
+export const vendorPaymentProofStatusEnum = pgEnum("vendor_payment_proof_status", [
+  "submitted",
+  "accepted",
+  "rejected",
+]);
+
 export const accessRequestStatusEnum = pgEnum("access_request_status", [
   "pending",
   "approved",
@@ -842,5 +862,94 @@ export const vendorApplicationPolicyAcceptances = pgTable(
   (table) => [
     uniqueIndex("vendor_application_policy_unique").on(table.applicationId, table.policyType),
     index("vendor_application_policy_application_idx").on(table.applicationId),
+  ],
+);
+
+export const vendorPaymentSettings = pgTable("vendor_payment_settings", {
+  id: text("id").primaryKey(),
+  momoEnabled: boolean("momo_enabled").notNull().default(false),
+  momoNetwork: text("momo_network").notNull().default(""),
+  momoName: text("momo_name").notNull().default(""),
+  momoPhone: text("momo_phone").notNull().default(""),
+  bankEnabled: boolean("bank_enabled").notNull().default(false),
+  bankName: text("bank_name").notNull().default(""),
+  bankAccountName: text("bank_account_name").notNull().default(""),
+  bankAccountNumber: text("bank_account_number").notNull().default(""),
+  bankBranch: text("bank_branch").notNull().default(""),
+  instructions: text("instructions").notNull().default("Use your payment reference in the transaction description."),
+  paymentDueDays: integer("payment_due_days").notNull().default(7),
+  updatedByUserId: text("updated_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const vendorPayments = pgTable(
+  "vendor_payments",
+  {
+    id: text("id").primaryKey(),
+    reference: text("reference").notNull().unique(),
+    applicationId: text("application_id")
+      .notNull()
+      .references(() => vendorApplications.id, { onDelete: "cascade" })
+      .unique(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    vendorId: text("vendor_id").references(() => vendors.id, { onDelete: "set null" }),
+    packageId: text("package_id").references(() => vendorPackages.id, { onDelete: "set null" }),
+    standId: text("stand_id").references(() => stands.id, { onDelete: "set null" }),
+    amountMinor: integer("amount_minor").notNull(),
+    receivedAmountMinor: integer("received_amount_minor").notNull().default(0),
+    currency: text("currency").notNull().default("GHS"),
+    status: vendorPaymentStatusEnum("status").notNull().default("pending"),
+    paymentMethod: vendorPaymentMethodEnum("payment_method"),
+    payerName: text("payer_name").notNull().default(""),
+    payerPhone: text("payer_phone").notNull().default(""),
+    transactionReference: text("transaction_reference").notNull().default(""),
+    proofStorageKey: text("proof_storage_key"),
+    proofFileName: text("proof_file_name"),
+    proofContentType: text("proof_content_type"),
+    proofFileSize: integer("proof_file_size"),
+    proofUploadedByUserId: text("proof_uploaded_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewedByUserId: text("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    reviewerNote: text("reviewer_note"),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("vendor_payments_status_idx").on(table.status, table.updatedAt),
+    index("vendor_payments_organization_idx").on(table.organizationId),
+    index("vendor_payments_stand_idx").on(table.standId),
+  ],
+);
+
+export const vendorPaymentProofs = pgTable(
+  "vendor_payment_proofs",
+  {
+    id: text("id").primaryKey(),
+    paymentId: text("payment_id")
+      .notNull()
+      .references(() => vendorPayments.id, { onDelete: "cascade" }),
+    paymentMethod: vendorPaymentMethodEnum("payment_method").notNull(),
+    payerName: text("payer_name").notNull(),
+    payerPhone: text("payer_phone").notNull(),
+    transactionReference: text("transaction_reference").notNull(),
+    storageKey: text("storage_key").notNull(),
+    fileName: text("file_name").notNull(),
+    contentType: text("content_type").notNull(),
+    fileSize: integer("file_size").notNull(),
+    uploadedByUserId: text("uploaded_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    status: vendorPaymentProofStatusEnum("status").notNull().default("submitted"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewedByUserId: text("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    reviewerNote: text("reviewer_note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("vendor_payment_proofs_payment_idx").on(table.paymentId, table.createdAt),
+    index("vendor_payment_proofs_status_idx").on(table.status),
   ],
 );

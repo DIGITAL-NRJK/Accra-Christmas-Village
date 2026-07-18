@@ -26,6 +26,8 @@ import {
   supportTickets,
   trafficDaily,
   users,
+  vendorPaymentProofs,
+  vendorPayments,
   vendors,
   zones,
 } from "@/db/schema";
@@ -427,7 +429,7 @@ export async function getUserDeletionContext(userId: string) {
     return null;
   }
 
-  const [organization, organizationUsers, organizationDocuments, vendorRows, sponsorRows] =
+  const [organization, organizationUsers, organizationDocuments, vendorPaymentRows, vendorRows, sponsorRows] =
     user.organizationId
       ? await Promise.all([
           db.select().from(organizations).where(eq(organizations.id, user.organizationId)).limit(1),
@@ -437,6 +439,11 @@ export async function getUserDeletionContext(userId: string) {
             .from(documents)
             .where(eq(documents.organizationId, user.organizationId)),
           db
+            .select({ storageKey: vendorPaymentProofs.storageKey })
+            .from(vendorPaymentProofs)
+            .innerJoin(vendorPayments, eq(vendorPaymentProofs.paymentId, vendorPayments.id))
+            .where(eq(vendorPayments.organizationId, user.organizationId)),
+          db
             .select({ standId: vendors.standId })
             .from(vendors)
             .where(eq(vendors.organizationId, user.organizationId)),
@@ -445,7 +452,7 @@ export async function getUserDeletionContext(userId: string) {
             .from(sponsors)
             .where(eq(sponsors.organizationId, user.organizationId)),
         ])
-      : [[], [], [], [], []];
+      : [[], [], [], [], [], []];
   const organizationRecord = organization[0] ?? null;
   const isParticipantOrganization =
     organizationRecord?.type === "vendor" ||
@@ -467,8 +474,8 @@ export async function getUserDeletionContext(userId: string) {
         ))
       : [],
     storageKeys: deleteOrganization
-      ? organizationDocuments
-          .map((document) => document.storageKey)
+      ? [...organizationDocuments, ...vendorPaymentRows]
+          .map((record) => record.storageKey)
           .filter((storageKey): storageKey is string => Boolean(storageKey))
       : [],
     user,
@@ -507,6 +514,7 @@ export async function deleteUserAndRelatedData(userId: string) {
     db.delete(accessRequests).where(accessRequestCondition),
     db.delete(documents).where(eq(documents.organizationId, organizationIdToDelete)),
     db.delete(onboardingTasks).where(eq(onboardingTasks.organizationId, organizationIdToDelete)),
+    db.delete(vendorPayments).where(eq(vendorPayments.organizationId, organizationIdToDelete)),
     db.delete(vendors).where(eq(vendors.organizationId, organizationIdToDelete)),
     db.delete(sponsors).where(eq(sponsors.organizationId, organizationIdToDelete)),
     db.delete(users).where(eq(users.id, context.user.id)),
@@ -1547,17 +1555,25 @@ export type AssignStandInput = {
 export async function assignStand(input: AssignStandInput) {
   if (!process.env.DATABASE_URL) {
     console.info("Skipped stand assignment because DATABASE_URL is not set.", input);
-    return;
+    return false;
   }
 
   const db = getDb();
+  const [paidReservation] = await db.select().from(vendorPayments).where(and(eq(vendorPayments.standId, input.standId), eq(vendorPayments.status, "paid"))).limit(1);
+  if (paidReservation && (input.participantType === "none" || paidReservation.organizationId !== input.organizationId)) {
+    return false;
+  }
+  if (input.participantType === "vendor" && input.organizationId) {
+    const [vendorPayment] = await db.select().from(vendorPayments).where(eq(vendorPayments.organizationId, input.organizationId)).orderBy(desc(vendorPayments.createdAt)).limit(1);
+    if (vendorPayment && (vendorPayment.status !== "paid" || vendorPayment.standId !== input.standId)) return false;
+  }
 
   await db.update(vendors).set({ standId: null }).where(eq(vendors.standId, input.standId));
   await db.update(sponsors).set({ standId: null, activationLocation: "Pending allocation" }).where(eq(sponsors.standId, input.standId));
 
   if (input.participantType === "none" || !input.organizationId) {
     await db.update(stands).set({ status: "available" }).where(eq(stands.id, input.standId));
-    return;
+    return true;
   }
 
   const [organization] = await db
@@ -1567,7 +1583,7 @@ export async function assignStand(input: AssignStandInput) {
     .limit(1);
 
   if (!organization) {
-    return;
+    return false;
   }
 
   if (input.participantType === "vendor") {
@@ -1624,6 +1640,7 @@ export async function assignStand(input: AssignStandInput) {
   }
 
   await db.update(stands).set({ status: "assigned" }).where(eq(stands.id, input.standId));
+  return true;
 }
 
 export type SaveSponsorInput = Pick<

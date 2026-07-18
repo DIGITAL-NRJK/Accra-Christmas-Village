@@ -9,6 +9,7 @@ import {
   type SaveVendorInput,
 } from "@/db/queries";
 import { requireAdminSection } from "@/lib/admin-rbac";
+import { getVendorPaymentByOrganization } from "@/db/vendor-payments";
 import type { ComplianceStatus } from "@/lib/types";
 
 export type VendorActionState = {
@@ -93,6 +94,10 @@ export async function updateVendorAction(
   }
 
   const previous = await getVendorById(vendorId);
+  const payment = await getVendorPaymentByOrganization(organizationId);
+  if (payment && input.standId !== previous?.standId && (payment.status !== "paid" || input.standId !== payment.standId)) {
+    return errorState("This Vendor stand is controlled by payment verification. Confirm full payment or keep the reserved stand.");
+  }
   const updated = await updateVendor(vendorId, organizationId, input);
 
   if (!updated) {
