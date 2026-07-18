@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Banknote, ClipboardList, Images } from "lucide-react";
+import { Banknote, BookOpenCheck, ClipboardList, Images } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { PortalNav } from "@/components/portal-nav";
 import { ProgressBar } from "@/components/progress-bar";
@@ -7,6 +7,8 @@ import { StatusPill } from "@/components/status-pill";
 import { listAdminData } from "@/db/queries";
 import { getVendorPaymentByOrganization } from "@/db/vendor-payments";
 import { getVendorBrandWorkspace } from "@/db/vendor-branding";
+import { getVendorApplicationByOrganization } from "@/db/vendor-applications";
+import { getActiveVendorHandbookForOrganization } from "@/db/vendor-handbook";
 import { requirePortalContext, type PortalSearchParams } from "@/lib/portal-context";
 
 export const metadata = {
@@ -21,10 +23,12 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
   const params = await searchParams;
   const { organization, previewQuery, role } = await requirePortalContext(params);
   const organizationId = organization.id;
-  const [{ documentRequirements, documents, vendors }, vendorPayment, vendorBrand] = await Promise.all([
+  const vendorApplication = role === "vendor" ? await getVendorApplicationByOrganization(organizationId) : null;
+  const [{ documentRequirements, documents, vendors }, vendorPayment, vendorBrand, vendorHandbook] = await Promise.all([
     listAdminData(),
     role === "vendor" ? getVendorPaymentByOrganization(organizationId) : Promise.resolve(null),
     role === "vendor" ? getVendorBrandWorkspace(organizationId) : Promise.resolve({ assets: [], profile: null, vendor: null }),
+    role === "vendor" ? getActiveVendorHandbookForOrganization(organizationId, vendorApplication?.vendorKind ?? "general") : Promise.resolve(null),
   ]);
   const requirementType = role === "sponsor" ? "sponsor" : role === "partner" ? "partner" : "vendor";
   const vendorCategory = vendors.find((vendor) => vendor.organizationId === organizationId)?.category;
@@ -40,8 +44,12 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
   const completedPaymentCheckpoint = vendorPayment?.status === "paid" ? 1 : 0;
   const brandCheckpoint = role === "vendor" ? 1 : 0;
   const completedBrandCheckpoint = ["approved", "published"].includes(vendorBrand.profile?.status ?? "") ? 1 : 0;
-  const checkpointCount = requirements.length + paymentCheckpoint + brandCheckpoint;
-  const progress = checkpointCount > 0 ? Math.round(((approvedCount + completedPaymentCheckpoint + completedBrandCheckpoint) / checkpointCount) * 100) : 0;
+  const requiredHandbookSections = vendorHandbook?.sections.filter((section) => section.required) ?? [];
+  const acknowledgedHandbookSections = new Set(vendorHandbook?.acknowledgements.map((item) => item.sectionId) ?? []);
+  const handbookCheckpoint = requiredHandbookSections.length > 0 ? 1 : 0;
+  const completedHandbookCheckpoint = handbookCheckpoint && requiredHandbookSections.every((section) => acknowledgedHandbookSections.has(section.id)) ? 1 : 0;
+  const checkpointCount = requirements.length + paymentCheckpoint + brandCheckpoint + handbookCheckpoint;
+  const progress = checkpointCount > 0 ? Math.round(((approvedCount + completedPaymentCheckpoint + completedBrandCheckpoint + completedHandbookCheckpoint) / checkpointCount) * 100) : 0;
 
   return (
     <>
@@ -65,6 +73,7 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
         <div className="grid gap-3">
           {role === "vendor" ? <article className="rounded-lg border-2 border-acv-gold bg-white p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><Banknote className="size-5 text-acv-palm" /><h2 className="mt-3 text-lg font-semibold text-acv-ink">Package payment and stand reservation</h2><p className="mt-1 text-sm text-slate-600">Full payment must be verified before an available stand can be reserved.</p></div><StatusPill status={vendorPayment?.status ?? "pending"} /></div><Link className="mt-4 inline-flex rounded-lg bg-acv-ink px-4 py-2 text-sm font-bold text-white" href={`/portal/payment${previewQuery}`}>Open payment receipt</Link></article> : null}
           {role === "vendor" ? <article className="rounded-lg border-2 border-acv-gold bg-white p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><Images className="size-5 text-acv-palm" /><h2 className="mt-3 text-lg font-semibold text-acv-ink">Brand profile and public directory</h2><p className="mt-1 text-sm text-slate-600">Submit approved copy, a logo and visitor images before publication.</p></div><StatusPill status={vendorBrand.profile?.status ?? "draft"} /></div><Link className="mt-4 inline-flex rounded-lg bg-acv-ink px-4 py-2 text-sm font-bold text-white" href={`/portal/brand-profile${previewQuery}`}>Open brand profile</Link></article> : null}
+          {role === "vendor" && vendorHandbook ? <article className="rounded-lg border-2 border-acv-gold bg-white p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><BookOpenCheck className="size-5 text-acv-palm" /><h2 className="mt-3 text-lg font-semibold text-acv-ink">Vendor handbook v{vendorHandbook.handbook.version}</h2><p className="mt-1 text-sm text-slate-600">Confirm every required setup and operating instruction before arrival on site.</p></div><StatusPill status={completedHandbookCheckpoint ? "compliant" : "in_progress"} /></div><p className="mt-3 text-sm font-semibold text-slate-600">{requiredHandbookSections.filter((section) => acknowledgedHandbookSections.has(section.id)).length}/{requiredHandbookSections.length} instructions confirmed</p><Link className="mt-4 inline-flex rounded-lg bg-acv-ink px-4 py-2 text-sm font-bold text-white" href={`/portal/handbook${previewQuery}`}>Open field handbook</Link></article> : null}
           {requirements.map((requirement) => {
             const document = organizationDocuments.find((candidate) => candidate.requirementId === requirement.id);
 

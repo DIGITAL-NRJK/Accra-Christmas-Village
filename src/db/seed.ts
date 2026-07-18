@@ -21,6 +21,9 @@ async function main() {
 
   await db.delete(schema.accessRequests);
   await db.delete(schema.auditLogs);
+  await db.delete(schema.vendorHandbookAcknowledgements);
+  await db.delete(schema.vendorHandbookSections);
+  await db.delete(schema.vendorHandbooks);
   await db.delete(schema.vendorBrandAssets);
   await db.delete(schema.vendorBrandProfiles);
   await db.delete(schema.incidents);

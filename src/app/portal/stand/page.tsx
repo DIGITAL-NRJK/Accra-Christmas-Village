@@ -1,7 +1,10 @@
-import { Cable, MapPinned, Shield, Trash2, Truck, Zap } from "lucide-react";
+import Link from "next/link";
+import { BookOpenCheck, Cable, MapPinned, Shield, Trash2, Truck, Zap } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { PortalNav } from "@/components/portal-nav";
 import { getParticipantPlacement } from "@/db/queries";
+import { getVendorApplicationByOrganization } from "@/db/vendor-applications";
+import { getActiveVendorHandbookForOrganization } from "@/db/vendor-handbook";
 import { requirePortalContext, type PortalSearchParams } from "@/lib/portal-context";
 
 export const metadata = {
@@ -51,6 +54,8 @@ export default async function StandPage({ searchParams }: StandPageProps) {
   const placement = await getParticipantPlacement(organization.id);
   const stand = placement.stand;
   const zone = placement.zone;
+  const application = role === "vendor" ? await getVendorApplicationByOrganization(organization.id) : null;
+  const handbook = role === "vendor" ? await getActiveVendorHandbookForOrganization(organization.id, application?.vendorKind ?? "general") : null;
 
   return (
     <>
@@ -84,6 +89,7 @@ export default async function StandPage({ searchParams }: StandPageProps) {
           </dl>
         </aside>
         <div className="grid gap-3 sm:grid-cols-2">
+          {role === "vendor" && handbook ? <article className="rounded-lg border-2 border-acv-gold bg-amber-50 p-5 shadow-sm sm:col-span-2"><BookOpenCheck className="size-5 text-acv-palm" /><h2 className="mt-3 text-lg font-semibold text-acv-ink">Current operational instructions</h2><p className="mt-2 text-sm leading-6 text-slate-600">Handbook version {handbook.handbook.version} is the authoritative reference for setup and event-day operations.</p><Link className="mt-4 inline-flex rounded-lg bg-acv-ink px-4 py-2 text-sm font-bold text-white" href={`/portal/handbook${previewQuery}`}>Open and confirm the handbook</Link></article> : null}
           {instructions.map((instruction) => (
             <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm" key={instruction.title}>
               <instruction.icon aria-hidden="true" className="size-5 text-acv-palm" />

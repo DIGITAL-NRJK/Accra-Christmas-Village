@@ -160,6 +160,31 @@ export const vendorBrandAssetStatusEnum = pgEnum("vendor_brand_asset_status", [
   "rejected",
 ]);
 
+export const vendorHandbookStatusEnum = pgEnum("vendor_handbook_status", [
+  "draft",
+  "published",
+  "archived",
+]);
+
+export const vendorHandbookAudienceEnum = pgEnum("vendor_handbook_audience", [
+  "all",
+  "general",
+  "food",
+]);
+
+export const vendorHandbookSectionKindEnum = pgEnum("vendor_handbook_section_kind", [
+  "setup",
+  "operating_hours",
+  "deliveries",
+  "power",
+  "waste",
+  "security",
+  "branding",
+  "food_safety",
+  "emergency",
+  "other",
+]);
+
 export const accessRequestStatusEnum = pgEnum("access_request_status", [
   "pending",
   "approved",
@@ -303,6 +328,69 @@ export const vendorBrandAssets = pgTable(
   (table) => [
     index("vendor_brand_assets_profile_idx").on(table.profileId, table.kind, table.createdAt),
     index("vendor_brand_assets_status_idx").on(table.status),
+  ],
+);
+
+export const vendorHandbooks = pgTable(
+  "vendor_handbooks",
+  {
+    id: text("id").primaryKey(),
+    title: text("title").notNull(),
+    summary: text("summary").notNull().default(""),
+    version: integer("version").notNull(),
+    status: vendorHandbookStatusEnum("status").notNull().default("draft"),
+    effectiveFrom: date("effective_from"),
+    createdByUserId: text("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    publishedByUserId: text("published_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("vendor_handbooks_version_unique").on(table.version),
+    index("vendor_handbooks_status_idx").on(table.status, table.version),
+  ],
+);
+
+export const vendorHandbookSections = pgTable(
+  "vendor_handbook_sections",
+  {
+    id: text("id").primaryKey(),
+    handbookId: text("handbook_id")
+      .notNull()
+      .references(() => vendorHandbooks.id, { onDelete: "cascade" }),
+    kind: vendorHandbookSectionKindEnum("kind").notNull(),
+    audience: vendorHandbookAudienceEnum("audience").notNull().default("all"),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    quickReference: text("quick_reference").notNull().default(""),
+    required: boolean("required").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("vendor_handbook_sections_handbook_idx").on(table.handbookId, table.sortOrder)],
+);
+
+export const vendorHandbookAcknowledgements = pgTable(
+  "vendor_handbook_acknowledgements",
+  {
+    id: text("id").primaryKey(),
+    handbookId: text("handbook_id")
+      .notNull()
+      .references(() => vendorHandbooks.id, { onDelete: "cascade" }),
+    sectionId: text("section_id")
+      .notNull()
+      .references(() => vendorHandbookSections.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    acknowledgedByUserId: text("acknowledged_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("vendor_handbook_ack_section_org_unique").on(table.sectionId, table.organizationId),
+    index("vendor_handbook_ack_org_idx").on(table.organizationId, table.handbookId),
   ],
 );
 
