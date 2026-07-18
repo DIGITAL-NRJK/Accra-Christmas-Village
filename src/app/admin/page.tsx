@@ -10,6 +10,7 @@ import {
   ImageIcon,
   MapPinned,
   Megaphone,
+  PackageOpen,
   Siren,
   ShieldCheck,
   Store,
@@ -20,6 +21,7 @@ import { MetricCard } from "@/components/metric-card";
 import { PageHeader } from "@/components/page-header";
 import { StatusPill } from "@/components/status-pill";
 import { listAccreditationData, listAdminData } from "@/db/queries";
+import { listVendorCatalog } from "@/db/vendor-catalog";
 import { canAccessAdminSection, requireAdminSection, type AdminSection } from "@/lib/admin-rbac";
 import type { Role } from "@/lib/types";
 
@@ -76,7 +78,7 @@ export default async function AdminPage() {
     stands,
     users,
     vendors,
-  }, accreditationData] = await Promise.all([listAdminData(), listAccreditationData()]);
+  }, accreditationData, vendorCatalog] = await Promise.all([listAdminData(), listAccreditationData(), listVendorCatalog()]);
   const copy = dashboardCopy[session.role] ?? dashboardCopy.admin!;
   const sectionHref = (section: AdminSection, href: string) => (canAccessAdminSection(session.role, section) ? href : undefined);
   const pendingAccessRequests = accessRequests.filter((request) => request.status === "pending").length;
@@ -107,6 +109,7 @@ export default async function AdminPage() {
   const documentQueue = documents.filter((document) => document.status === "submitted" || document.status === "rejected");
   const metricCards = [
     { detail: "Valid, non-revoked event credentials.", href: sectionHref("accreditations", "/admin/accreditations"), icon: IdCard, label: "Valid badges", value: accreditationData.accreditations.filter((badge) => !["revoked", "expired"].includes(badge.status) && badge.validUntil >= new Date()).length },
+    { detail: "Published commercial offers available for future Vendor applications.", href: sectionHref("vendor_catalog", "/admin/vendor-catalog"), icon: PackageOpen, label: "Vendor packages", value: `${vendorCatalog.packages.filter((vendorPackage) => vendorPackage.published).length}/${vendorCatalog.packages.length}` },
     { detail: "Accounts with portal or admin access.", href: sectionHref("users", "/admin/users"), icon: Users, label: "Users", value: users.length },
     { detail: "Awaiting organizer approval.", href: sectionHref("access", "/admin/access-requests?status=pending"), icon: Handshake, label: "Access requests", value: pendingAccessRequests },
     { detail: "Active and pending vendor records.", href: sectionHref("vendors", "/admin/vendors"), icon: Store, label: "Vendors", value: vendors.length },

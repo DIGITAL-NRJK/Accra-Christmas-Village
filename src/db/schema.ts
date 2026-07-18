@@ -86,6 +86,29 @@ export const accreditationStatusEnum = pgEnum("accreditation_status", [
   "expired",
 ]);
 
+export const vendorKindEnum = pgEnum("vendor_kind", ["general", "food"]);
+
+export const vendorPackageTierEnum = pgEnum("vendor_package_tier", [
+  "standard",
+  "premium",
+  "platinum",
+]);
+
+export const vendorEntitlementCategoryEnum = pgEnum("vendor_entitlement_category", [
+  "equipment",
+  "infrastructure",
+  "operations",
+  "marketing",
+  "location",
+]);
+
+export const vendorPolicyTypeEnum = pgEnum("vendor_policy_type", [
+  "cancellation",
+  "operating_hours",
+  "security",
+  "setup",
+]);
+
 export const accessRequestStatusEnum = pgEnum("access_request_status", [
   "pending",
   "approved",
@@ -220,6 +243,98 @@ export const sponsorCommitments = pgTable(
     index("sponsor_commitments_sponsor_idx").on(table.sponsorId),
     index("sponsor_commitments_status_due_idx").on(table.status, table.dueDate),
   ],
+);
+
+export const vendorCategoryGroups = pgTable("vendor_category_groups", {
+  id: text("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  active: boolean("active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const vendorCategories = pgTable(
+  "vendor_categories",
+  {
+    id: text("id").primaryKey(),
+    groupId: text("group_id")
+      .notNull()
+      .references(() => vendorCategoryGroups.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull().unique(),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    active: boolean("active").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("vendor_categories_group_idx").on(table.groupId, table.sortOrder)],
+);
+
+export const vendorPackages = pgTable(
+  "vendor_packages",
+  {
+    id: text("id").primaryKey(),
+    code: text("code").notNull().unique(),
+    name: text("name").notNull(),
+    vendorKind: vendorKindEnum("vendor_kind").notNull(),
+    tier: vendorPackageTierEnum("tier").notNull(),
+    description: text("description").notNull().default(""),
+    currency: text("currency").notNull().default("GHS"),
+    priceMinor: integer("price_minor"),
+    boothWidthCm: integer("booth_width_cm").notNull(),
+    boothDepthCm: integer("booth_depth_cm").notNull(),
+    version: integer("version").notNull().default(1),
+    active: boolean("active").notNull().default(true),
+    published: boolean("published").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedByUserId: text("updated_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  },
+  (table) => [index("vendor_packages_kind_tier_idx").on(table.vendorKind, table.tier)],
+);
+
+export const vendorPackageEntitlements = pgTable(
+  "vendor_package_entitlements",
+  {
+    id: text("id").primaryKey(),
+    packageId: text("package_id")
+      .notNull()
+      .references(() => vendorPackages.id, { onDelete: "cascade" }),
+    code: text("code").notNull(),
+    label: text("label").notNull(),
+    description: text("description").notNull().default(""),
+    category: vendorEntitlementCategoryEnum("category").notNull(),
+    quantity: integer("quantity").notNull().default(1),
+    unit: text("unit").notNull().default(""),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("vendor_package_entitlements_package_code_unique").on(table.packageId, table.code),
+    index("vendor_package_entitlements_package_idx").on(table.packageId, table.sortOrder),
+  ],
+);
+
+export const vendorPolicies = pgTable(
+  "vendor_policies",
+  {
+    id: text("id").primaryKey(),
+    type: vendorPolicyTypeEnum("type").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    version: integer("version").notNull().default(1),
+    active: boolean("active").notNull().default(true),
+    effectiveFrom: date("effective_from"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedByUserId: text("updated_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  },
+  (table) => [index("vendor_policies_type_active_idx").on(table.type, table.active)],
 );
 
 export const staffMembers = pgTable(
