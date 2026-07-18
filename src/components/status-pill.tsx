@@ -49,6 +49,7 @@ const statusCopy: Record<string, string> = {
   paid: "Paid",
   accepted: "Accepted",
   published: "Published",
+  archived: "Archived",
 };
 
 const statusClasses: Record<string, string> = {
@@ -96,6 +97,7 @@ const statusClasses: Record<string, string> = {
   paid: "border-emerald-300 bg-emerald-50 text-emerald-800",
   accepted: "border-emerald-300 bg-emerald-50 text-emerald-800",
   published: "border-emerald-300 bg-emerald-50 text-emerald-800",
+  archived: "border-slate-300 bg-slate-100 text-slate-700",
 };
 
 function StatusIcon({ status }: { status: string }) {
