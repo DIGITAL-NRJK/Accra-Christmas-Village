@@ -1,6 +1,9 @@
-import { and, asc, desc, eq, gte, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import {
+  accreditationQuotas,
+  accreditationScans,
+  accreditations,
   accessRequests,
   announcements,
   auditLogs,
@@ -17,6 +20,7 @@ import {
   organizations,
   sponsors,
   sponsorCommitments,
+  staffMembers,
   stands,
   supportMessages,
   supportTickets,
@@ -39,6 +43,13 @@ import type {
 
 const participantRoles: ParticipantRole[] = ["vendor", "sponsor", "partner"];
 const organizerOrganizationId = "org-festival-ops";
+
+export function getDefaultAccreditationQuota(organizationType: string) {
+  if (organizationType === "organizer") return 50;
+  if (organizationType === "sponsor") return 15;
+  if (organizationType === "partner") return 10;
+  return 8;
+}
 
 function isParticipantRole(role: string): role is ParticipantRole {
   return participantRoles.includes(role as ParticipantRole);
@@ -975,6 +986,242 @@ export async function listAdminData() {
     users: userRows,
     vendors: vendorRows,
     zones: zoneRows,
+  };
+}
+
+export async function listAccreditationData(organizationId?: string | null) {
+  if (!process.env.DATABASE_URL) {
+    return { accreditations: [], organizations: [], quotas: [], scans: [], staffMembers: [], users: [] };
+  }
+
+  const db = getDb();
+  const staffQuery = organizationId
+    ? db.select().from(staffMembers).where(eq(staffMembers.organizationId, organizationId)).orderBy(asc(staffMembers.fullName))
+    : db.select().from(staffMembers).orderBy(asc(staffMembers.fullName));
+  const accreditationQuery = organizationId
+    ? db.select().from(accreditations).where(eq(accreditations.organizationId, organizationId)).orderBy(desc(accreditations.createdAt))
+    : db.select().from(accreditations).orderBy(desc(accreditations.createdAt));
+  const quotaQuery = organizationId
+    ? db.select().from(accreditationQuotas).where(eq(accreditationQuotas.organizationId, organizationId))
+    : db.select().from(accreditationQuotas);
+  const [accreditationRows, organizationRows, quotaRows, scanRows, staffRows, userRows] = await Promise.all([
+    accreditationQuery,
+    organizationId
+      ? db.select().from(organizations).where(eq(organizations.id, organizationId))
+      : db.select().from(organizations).orderBy(asc(organizations.name)),
+    quotaQuery,
+    organizationId
+      ? db
+          .select({
+            accreditationId: accreditationScans.accreditationId,
+            checkpoint: accreditationScans.checkpoint,
+            createdAt: accreditationScans.createdAt,
+            denialReason: accreditationScans.denialReason,
+            direction: accreditationScans.direction,
+            id: accreditationScans.id,
+            outcome: accreditationScans.outcome,
+            scannedByUserId: accreditationScans.scannedByUserId,
+          })
+          .from(accreditationScans)
+          .innerJoin(accreditations, eq(accreditationScans.accreditationId, accreditations.id))
+          .where(eq(accreditations.organizationId, organizationId))
+          .orderBy(desc(accreditationScans.createdAt))
+      : db.select().from(accreditationScans).orderBy(desc(accreditationScans.createdAt)),
+    staffQuery,
+    db.select().from(users).orderBy(asc(users.fullName)),
+  ]);
+
+  return {
+    accreditations: accreditationRows,
+    organizations: organizationRows,
+    quotas: quotaRows,
+    scans: scanRows,
+    staffMembers: staffRows,
+    users: userRows,
+  };
+}
+
+export type SaveStaffMemberInput = {
+  active?: boolean;
+  email: string;
+  fullName: string;
+  organizationId: string;
+  phone: string;
+  roleLabel: string;
+  staffType: string;
+  userId?: string | null;
+};
+
+export async function createStaffMember(input: SaveStaffMemberInput) {
+  const id = crypto.randomUUID();
+  if (!process.env.DATABASE_URL) return id;
+  await getDb().insert(staffMembers).values({ id, ...input });
+  return id;
+}
+
+export async function syncInternalUsersToStaff() {
+  if (!process.env.DATABASE_URL) return 0;
+  const db = getDb();
+  const internalRoles: Role[] = ["admin", "super_admin", "operations_manager", "content_manager", "compliance_manager", "stand_manager"];
+  const [internalUsers, existingStaff, [organizer]] = await Promise.all([
+    db.select().from(users).where(inArray(users.role, internalRoles)),
+    db.select({ userId: staffMembers.userId }).from(staffMembers),
+    db.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, organizerOrganizationId)).limit(1),
+  ]);
+  if (!organizer) return 0;
+  const existingUserIds = new Set(existingStaff.map((staff) => staff.userId).filter(Boolean));
+  const additions = internalUsers.filter((user) => !existingUserIds.has(user.id));
+  if (additions.length === 0) return 0;
+  await db.insert(staffMembers).values(additions.map((user) => ({
+    email: user.email,
+    fullName: user.fullName,
+    id: crypto.randomUUID(),
+    organizationId: organizer.id,
+    phone: "",
+    roleLabel: user.role.replaceAll("_", " "),
+    staffType: "crew",
+    userId: user.id,
+  })));
+  return additions.length;
+}
+
+export async function getStaffMemberById(staffMemberId: string) {
+  if (!process.env.DATABASE_URL || !staffMemberId) return null;
+  const [staffMember] = await getDb().select().from(staffMembers).where(eq(staffMembers.id, staffMemberId)).limit(1);
+  return staffMember ?? null;
+}
+
+export async function updateStaffMember(staffMemberId: string, input: Omit<SaveStaffMemberInput, "organizationId" | "userId">) {
+  if (!process.env.DATABASE_URL || !staffMemberId) return false;
+  const [updated] = await getDb()
+    .update(staffMembers)
+    .set({ ...input, updatedAt: new Date() })
+    .where(eq(staffMembers.id, staffMemberId))
+    .returning({ id: staffMembers.id });
+  return Boolean(updated);
+}
+
+export async function deleteStaffMember(staffMemberId: string) {
+  if (!process.env.DATABASE_URL || !staffMemberId) return;
+  await getDb().delete(staffMembers).where(eq(staffMembers.id, staffMemberId));
+}
+
+export async function setAccreditationQuota(organizationId: string, maximumBadges: number, updatedByUserId: string | null) {
+  if (!process.env.DATABASE_URL || !organizationId) return;
+  const db = getDb();
+  await db
+    .insert(accreditationQuotas)
+    .values({ id: crypto.randomUUID(), maximumBadges, organizationId, updatedByUserId, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: accreditationQuotas.organizationId,
+      set: { maximumBadges, updatedByUserId, updatedAt: new Date() },
+    });
+}
+
+export type IssueAccreditationInput = {
+  badgeType: string;
+  issuedByUserId: string | null;
+  staffMemberId: string;
+  validFrom: Date;
+  validUntil: Date;
+};
+
+export async function issueAccreditation(input: IssueAccreditationInput) {
+  if (!process.env.DATABASE_URL) return { accreditationId: crypto.randomUUID(), error: null };
+  const db = getDb();
+  const [staffMember] = await db.select().from(staffMembers).where(eq(staffMembers.id, input.staffMemberId)).limit(1);
+  if (!staffMember?.active) return { accreditationId: null, error: "This staff member is inactive or missing." };
+  const [organization] = await db.select().from(organizations).where(eq(organizations.id, staffMember.organizationId)).limit(1);
+  if (!organization) return { accreditationId: null, error: "The organization no longer exists." };
+  const [quota] = await db.select().from(accreditationQuotas).where(eq(accreditationQuotas.organizationId, organization.id)).limit(1);
+  const maximumBadges = quota?.maximumBadges ?? getDefaultAccreditationQuota(organization.type);
+  const organizationBadges = await db.select().from(accreditations).where(eq(accreditations.organizationId, organization.id));
+  const now = new Date();
+  const activeBadgeCount = organizationBadges.filter((badge) => !["revoked", "expired"].includes(badge.status) && badge.validUntil >= now).length;
+  if (activeBadgeCount >= maximumBadges) return { accreditationId: null, error: `Badge quota reached (${maximumBadges}).` };
+  const existing = organizationBadges.find((badge) => badge.staffMemberId === staffMember.id && !["revoked", "expired"].includes(badge.status) && badge.validUntil >= now);
+  if (existing) return { accreditationId: null, error: "This staff member already has a valid badge." };
+
+  const accreditationId = crypto.randomUUID();
+  const badgeNumber = `ACV-${input.badgeType.slice(0, 3).toUpperCase()}-${crypto.randomUUID().replaceAll("-", "").slice(0, 7).toUpperCase()}`;
+  await db.insert(accreditations).values({
+    badgeNumber,
+    badgeType: input.badgeType,
+    id: accreditationId,
+    issuedAt: now,
+    issuedByUserId: input.issuedByUserId,
+    organizationId: organization.id,
+    staffMemberId: staffMember.id,
+    status: "issued",
+    validFrom: input.validFrom,
+    validUntil: input.validUntil,
+  });
+  return { accreditationId, error: null };
+}
+
+export async function getAccreditationById(accreditationId: string) {
+  if (!process.env.DATABASE_URL || !accreditationId) return null;
+  const db = getDb();
+  const [accreditation] = await db.select().from(accreditations).where(eq(accreditations.id, accreditationId)).limit(1);
+  if (!accreditation) return null;
+  const [[staffMember], [organization]] = await Promise.all([
+    db.select().from(staffMembers).where(eq(staffMembers.id, accreditation.staffMemberId)).limit(1),
+    db.select().from(organizations).where(eq(organizations.id, accreditation.organizationId)).limit(1),
+  ]);
+  if (!staffMember || !organization) return null;
+  return { accreditation, organization, staffMember };
+}
+
+export async function revokeAccreditation(accreditationId: string, reason: string, revokedByUserId: string | null) {
+  if (!process.env.DATABASE_URL || !accreditationId) return false;
+  const [updated] = await getDb()
+    .update(accreditations)
+    .set({ revocationReason: reason, revokedAt: new Date(), revokedByUserId, status: "revoked", tokenVersion: sql`${accreditations.tokenVersion} + 1`, updatedAt: new Date() })
+    .where(eq(accreditations.id, accreditationId))
+    .returning({ id: accreditations.id });
+  return Boolean(updated);
+}
+
+export async function recordAccreditationScan(input: {
+  accreditationId: string;
+  checkpoint: string;
+  direction: "entry" | "exit";
+  scannedByUserId: string | null;
+}) {
+  if (!process.env.DATABASE_URL) return null;
+  const db = getDb();
+  const details = await getAccreditationById(input.accreditationId);
+  if (!details) return null;
+  const now = new Date();
+  let denialReason: string | null = null;
+  if (details.accreditation.status === "revoked") denialReason = details.accreditation.revocationReason || "Badge revoked.";
+  else if (!details.staffMember.active) denialReason = "Staff member inactive.";
+  else if (details.accreditation.validFrom > now) denialReason = "Badge not valid yet.";
+  else if (details.accreditation.validUntil < now || details.accreditation.status === "expired") denialReason = "Badge expired.";
+  const outcome: "allowed" | "denied" = denialReason ? "denied" : "allowed";
+  await db.insert(accreditationScans).values({
+    accreditationId: details.accreditation.id,
+    checkpoint: input.checkpoint,
+    denialReason,
+    direction: input.direction,
+    id: crypto.randomUUID(),
+    outcome,
+    scannedByUserId: input.scannedByUserId,
+  });
+  if (details.accreditation.validUntil < now && details.accreditation.status !== "revoked") {
+    await db.update(accreditations).set({ lastScannedAt: now, status: "expired", updatedAt: now }).where(eq(accreditations.id, details.accreditation.id));
+  } else {
+    await db.update(accreditations).set({ lastScannedAt: now, ...(outcome === "allowed" ? { status: "active" as const } : {}), updatedAt: now }).where(eq(accreditations.id, details.accreditation.id));
+  }
+  return {
+    accreditationId: details.accreditation.id,
+    badgeNumber: details.accreditation.badgeNumber,
+    badgeType: details.accreditation.badgeType,
+    denialReason,
+    direction: input.direction,
+    fullName: details.staffMember.fullName,
+    organizationName: details.organization.name,
+    outcome,
   };
 }
 

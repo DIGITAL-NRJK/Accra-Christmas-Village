@@ -78,6 +78,14 @@ export const incidentStatusEnum = pgEnum("incident_status", [
   "resolved",
 ]);
 
+export const accreditationStatusEnum = pgEnum("accreditation_status", [
+  "draft",
+  "issued",
+  "active",
+  "revoked",
+  "expired",
+]);
+
 export const accessRequestStatusEnum = pgEnum("access_request_status", [
   "pending",
   "approved",
@@ -211,6 +219,92 @@ export const sponsorCommitments = pgTable(
   (table) => [
     index("sponsor_commitments_sponsor_idx").on(table.sponsorId),
     index("sponsor_commitments_status_due_idx").on(table.status, table.dueDate),
+  ],
+);
+
+export const staffMembers = pgTable(
+  "staff_members",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+    fullName: text("full_name").notNull(),
+    email: text("email").notNull().default(""),
+    phone: text("phone").notNull().default(""),
+    roleLabel: text("role_label").notNull(),
+    staffType: text("staff_type").notNull(),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("staff_members_organization_idx").on(table.organizationId),
+    index("staff_members_user_idx").on(table.userId),
+  ],
+);
+
+export const accreditationQuotas = pgTable("accreditation_quotas", {
+  id: text("id").primaryKey(),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" })
+    .unique(),
+  maximumBadges: integer("maximum_badges").notNull().default(8),
+  updatedByUserId: text("updated_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const accreditations = pgTable(
+  "accreditations",
+  {
+    id: text("id").primaryKey(),
+    staffMemberId: text("staff_member_id")
+      .notNull()
+      .references(() => staffMembers.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    badgeNumber: text("badge_number").notNull().unique(),
+    badgeType: text("badge_type").notNull(),
+    status: accreditationStatusEnum("status").notNull().default("draft"),
+    tokenVersion: integer("token_version").notNull().default(1),
+    validFrom: timestamp("valid_from", { withTimezone: true }).notNull(),
+    validUntil: timestamp("valid_until", { withTimezone: true }).notNull(),
+    issuedAt: timestamp("issued_at", { withTimezone: true }),
+    issuedByUserId: text("issued_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedByUserId: text("revoked_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    revocationReason: text("revocation_reason"),
+    lastScannedAt: timestamp("last_scanned_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("accreditations_organization_idx").on(table.organizationId),
+    index("accreditations_staff_idx").on(table.staffMemberId),
+    index("accreditations_status_idx").on(table.status),
+  ],
+);
+
+export const accreditationScans = pgTable(
+  "accreditation_scans",
+  {
+    id: text("id").primaryKey(),
+    accreditationId: text("accreditation_id")
+      .notNull()
+      .references(() => accreditations.id, { onDelete: "cascade" }),
+    scannedByUserId: text("scanned_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    checkpoint: text("checkpoint").notNull(),
+    direction: text("direction").notNull(),
+    outcome: text("outcome").notNull(),
+    denialReason: text("denial_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("accreditation_scans_badge_idx").on(table.accreditationId, table.createdAt),
+    index("accreditation_scans_checkpoint_idx").on(table.checkpoint, table.createdAt),
   ],
 );
 
