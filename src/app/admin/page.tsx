@@ -24,6 +24,7 @@ import { StatusPill } from "@/components/status-pill";
 import { listAccreditationData, listAdminData } from "@/db/queries";
 import { listVendorCatalog } from "@/db/vendor-catalog";
 import { listVendorPayments } from "@/db/vendor-payments";
+import { listVendorBrandProfiles } from "@/db/vendor-branding";
 import { canAccessAdminSection, requireAdminSection, type AdminSection } from "@/lib/admin-rbac";
 import type { Role } from "@/lib/types";
 
@@ -80,7 +81,7 @@ export default async function AdminPage() {
     stands,
     users,
     vendors,
-  }, accreditationData, vendorCatalog, vendorPayments] = await Promise.all([listAdminData(), listAccreditationData(), listVendorCatalog(), listVendorPayments()]);
+  }, accreditationData, vendorCatalog, vendorPayments, vendorBrandProfiles] = await Promise.all([listAdminData(), listAccreditationData(), listVendorCatalog(), listVendorPayments(), listVendorBrandProfiles()]);
   const copy = dashboardCopy[session.role] ?? dashboardCopy.admin!;
   const sectionHref = (section: AdminSection, href: string) => (canAccessAdminSection(session.role, section) ? href : undefined);
   const pendingAccessRequests = accessRequests.filter((request) => request.status === "pending").length;
@@ -108,12 +109,14 @@ export default async function AdminPage() {
       .map((document) => document.organizationId),
   ).size;
   const pendingVendorPayments = vendorPayments.filter((payment) => payment.status === "under_review").length;
+  const pendingVendorBrandProfiles = vendorBrandProfiles.filter((item) => ["submitted", "under_review"].includes(item.profile.status)).length;
   const organizationNames = new Map(organizations.map((organization) => [organization.id, organization.name]));
   const documentQueue = documents.filter((document) => document.status === "submitted" || document.status === "rejected");
   const metricCards = [
     { detail: "Valid, non-revoked event credentials.", href: sectionHref("accreditations", "/admin/accreditations"), icon: IdCard, label: "Valid badges", value: accreditationData.accreditations.filter((badge) => !["revoked", "expired"].includes(badge.status) && badge.validUntil >= new Date()).length },
     { detail: "Published commercial offers available for future Vendor applications.", href: sectionHref("vendor_catalog", "/admin/vendor-catalog"), icon: PackageOpen, label: "Vendor packages", value: `${vendorCatalog.packages.filter((vendorPackage) => vendorPackage.published).length}/${vendorCatalog.packages.length}` },
     { detail: "Transfer proofs awaiting financial reconciliation.", href: sectionHref("vendor_payments", "/admin/vendor-payments?status=under_review"), icon: ReceiptText, label: "Vendor payments", value: pendingVendorPayments },
+    { detail: "Vendor copy and images awaiting an editorial decision.", href: sectionHref("vendor_branding", "/admin/vendor-branding?status=submitted"), icon: ImageIcon, label: "Vendor brand profiles", value: pendingVendorBrandProfiles },
     { detail: "Accounts with portal or admin access.", href: sectionHref("users", "/admin/users"), icon: Users, label: "Users", value: users.length },
     { detail: "Awaiting organizer approval.", href: sectionHref("access", "/admin/access-requests?status=pending"), icon: Handshake, label: "Access requests", value: pendingAccessRequests },
     { detail: "Active and pending vendor records.", href: sectionHref("vendors", "/admin/vendors"), icon: Store, label: "Vendors", value: vendors.length },

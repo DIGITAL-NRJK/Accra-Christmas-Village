@@ -134,6 +134,13 @@
       "when": 1784373815245,
       "tag": "0018_conscious_sage",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1784376676111,
+      "tag": "0019_fearless_winter_soldier",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import { Navigation, Store, Tags } from "lucide-react";
 import { StatusPill } from "@/components/status-pill";
@@ -14,6 +15,8 @@ export type StandDirectoryItem = {
   vendorName: string;
   powerAmps: number;
   status: string;
+  vendorLogoAssetId?: string;
+  vendorSlug?: string;
 };
 
 type StandDirectoryProps = {
@@ -63,9 +66,7 @@ export function StandDirectory({ items }: StandDirectoryProps) {
               <StatusPill status={item.status} />
             </div>
             <div className="mt-4 flex items-start gap-3">
-              <span className="rounded-md bg-acv-palm p-2 text-white">
-                <Store aria-hidden="true" className="size-5" />
-              </span>
+              {item.vendorLogoAssetId ? <span className="relative block size-10 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-white"><Image alt="" className="object-contain p-1" fill sizes="40px" src={`/vendor-assets/${item.vendorLogoAssetId}`} unoptimized /></span> : <span className="rounded-md bg-acv-palm p-2 text-white"><Store aria-hidden="true" className="size-5" /></span>}
               <div>
                 <h2 className="text-lg font-semibold text-acv-ink">{item.vendorName}</h2>
                 <p className="text-sm text-slate-600">{item.name}</p>
@@ -85,13 +86,7 @@ export function StandDirectory({ items }: StandDirectoryProps) {
                 <dd className="mt-1 text-acv-ink">{item.category}</dd>
               </div>
             </dl>
-            <Link
-              className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-acv-palm transition hover:text-acv-ink"
-              href={`/map?stand=${encodeURIComponent(item.id)}`}
-            >
-              <Navigation aria-hidden="true" className="size-4" />
-              Find on map
-            </Link>
+            <div className="mt-4 flex flex-wrap gap-3"><Link className="inline-flex items-center gap-2 text-sm font-bold text-acv-palm transition hover:text-acv-ink" href={`/map?stand=${encodeURIComponent(item.id)}`}><Navigation aria-hidden="true" className="size-4" />Find on map</Link>{item.vendorSlug ? <Link className="text-sm font-bold text-acv-clay transition hover:text-acv-ink" href={`/vendors/${item.vendorSlug}`}>View Vendor profile</Link> : null}</div>
           </article>
         ))}
       </div>

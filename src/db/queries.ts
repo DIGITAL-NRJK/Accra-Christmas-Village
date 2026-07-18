@@ -28,6 +28,8 @@ import {
   users,
   vendorPaymentProofs,
   vendorPayments,
+  vendorBrandAssets,
+  vendorBrandProfiles,
   vendors,
   zones,
 } from "@/db/schema";
@@ -429,7 +431,7 @@ export async function getUserDeletionContext(userId: string) {
     return null;
   }
 
-  const [organization, organizationUsers, organizationDocuments, vendorPaymentRows, vendorRows, sponsorRows] =
+  const [organization, organizationUsers, organizationDocuments, vendorPaymentRows, vendorBrandAssetRows, vendorRows, sponsorRows] =
     user.organizationId
       ? await Promise.all([
           db.select().from(organizations).where(eq(organizations.id, user.organizationId)).limit(1),
@@ -444,6 +446,11 @@ export async function getUserDeletionContext(userId: string) {
             .innerJoin(vendorPayments, eq(vendorPaymentProofs.paymentId, vendorPayments.id))
             .where(eq(vendorPayments.organizationId, user.organizationId)),
           db
+            .select({ storageKey: vendorBrandAssets.storageKey })
+            .from(vendorBrandAssets)
+            .innerJoin(vendorBrandProfiles, eq(vendorBrandAssets.profileId, vendorBrandProfiles.id))
+            .where(eq(vendorBrandProfiles.organizationId, user.organizationId)),
+          db
             .select({ standId: vendors.standId })
             .from(vendors)
             .where(eq(vendors.organizationId, user.organizationId)),
@@ -452,7 +459,7 @@ export async function getUserDeletionContext(userId: string) {
             .from(sponsors)
             .where(eq(sponsors.organizationId, user.organizationId)),
         ])
-      : [[], [], [], [], [], []];
+      : [[], [], [], [], [], [], []];
   const organizationRecord = organization[0] ?? null;
   const isParticipantOrganization =
     organizationRecord?.type === "vendor" ||
@@ -474,7 +481,7 @@ export async function getUserDeletionContext(userId: string) {
         ))
       : [],
     storageKeys: deleteOrganization
-      ? [...organizationDocuments, ...vendorPaymentRows]
+      ? [...organizationDocuments, ...vendorPaymentRows, ...vendorBrandAssetRows]
           .map((record) => record.storageKey)
           .filter((storageKey): storageKey is string => Boolean(storageKey))
       : [],
@@ -515,6 +522,7 @@ export async function deleteUserAndRelatedData(userId: string) {
     db.delete(documents).where(eq(documents.organizationId, organizationIdToDelete)),
     db.delete(onboardingTasks).where(eq(onboardingTasks.organizationId, organizationIdToDelete)),
     db.delete(vendorPayments).where(eq(vendorPayments.organizationId, organizationIdToDelete)),
+    db.delete(vendorBrandProfiles).where(eq(vendorBrandProfiles.organizationId, organizationIdToDelete)),
     db.delete(vendors).where(eq(vendors.organizationId, organizationIdToDelete)),
     db.delete(sponsors).where(eq(sponsors.organizationId, organizationIdToDelete)),
     db.delete(users).where(eq(users.id, context.user.id)),
