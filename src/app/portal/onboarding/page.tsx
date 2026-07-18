@@ -1,9 +1,11 @@
-import { ClipboardList } from "lucide-react";
+import Link from "next/link";
+import { Banknote, ClipboardList } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { PortalNav } from "@/components/portal-nav";
 import { ProgressBar } from "@/components/progress-bar";
 import { StatusPill } from "@/components/status-pill";
 import { listAdminData } from "@/db/queries";
+import { getVendorPaymentByOrganization } from "@/db/vendor-payments";
 import { requirePortalContext, type PortalSearchParams } from "@/lib/portal-context";
 
 export const metadata = {
@@ -18,7 +20,10 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
   const params = await searchParams;
   const { organization, previewQuery, role } = await requirePortalContext(params);
   const organizationId = organization.id;
-  const { documentRequirements, documents, vendors } = await listAdminData();
+  const [{ documentRequirements, documents, vendors }, vendorPayment] = await Promise.all([
+    listAdminData(),
+    role === "vendor" ? getVendorPaymentByOrganization(organizationId) : Promise.resolve(null),
+  ]);
   const requirementType = role === "sponsor" ? "sponsor" : role === "partner" ? "partner" : "vendor";
   const vendorCategory = vendors.find((vendor) => vendor.organizationId === organizationId)?.category;
   const requirements = documentRequirements.filter((requirement) =>
@@ -29,7 +34,10 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
   const approvedCount = requirements.filter((requirement) =>
     organizationDocuments.some((document) => document.requirementId === requirement.id && document.status === "approved"),
   ).length;
-  const progress = requirements.length > 0 ? Math.round((approvedCount / requirements.length) * 100) : 0;
+  const paymentCheckpoint = role === "vendor" ? 1 : 0;
+  const completedPaymentCheckpoint = vendorPayment?.status === "paid" ? 1 : 0;
+  const checkpointCount = requirements.length + paymentCheckpoint;
+  const progress = checkpointCount > 0 ? Math.round(((approvedCount + completedPaymentCheckpoint) / checkpointCount) * 100) : 0;
 
   return (
     <>
@@ -51,6 +59,7 @@ export default async function OnboardingPage({ searchParams }: OnboardingPagePro
           </div>
         </aside>
         <div className="grid gap-3">
+          {role === "vendor" ? <article className="rounded-lg border-2 border-acv-gold bg-white p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><Banknote className="size-5 text-acv-palm" /><h2 className="mt-3 text-lg font-semibold text-acv-ink">Package payment and stand reservation</h2><p className="mt-1 text-sm text-slate-600">Full payment must be verified before an available stand can be reserved.</p></div><StatusPill status={vendorPayment?.status ?? "pending"} /></div><Link className="mt-4 inline-flex rounded-lg bg-acv-ink px-4 py-2 text-sm font-bold text-white" href={`/portal/payment${previewQuery}`}>Open payment receipt</Link></article> : null}
           {requirements.map((requirement) => {
             const document = organizationDocuments.find((candidate) => candidate.requirementId === requirement.id);
 

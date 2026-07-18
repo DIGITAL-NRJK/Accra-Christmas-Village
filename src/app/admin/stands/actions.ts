@@ -15,7 +15,8 @@ export async function assignStandAction(formData: FormData) {
     return;
   }
 
-  await assignStand({ standId, participantType, organizationId });
+  const assigned = await assignStand({ standId, participantType, organizationId });
+  if (!assigned) return;
   const stand = await getStandById(standId);
   if (stand && participantType !== "none" && organizationId) {
     await createNotification({ actionHref: "/portal/stand", audience: participantType, body: `${stand.code} · ${stand.name} has been assigned to your organization.`, createdByUserId: session.user?.id ?? null, expiresAt: null, organizationId, title: "Stand assignment updated", type: "info" });

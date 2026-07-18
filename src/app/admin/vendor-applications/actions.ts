@@ -6,6 +6,7 @@ import {
   getVendorApplicationById,
   updateVendorApplicationReview,
 } from "@/db/vendor-applications";
+import { ensureVendorPaymentForApprovedApplication } from "@/db/vendor-payments";
 import {
   approveAccessRequest,
   createNotification,
@@ -90,6 +91,7 @@ export async function reviewVendorApplicationAction(
       organizationId: approvedUser.organizationId,
       reviewerUserId: session.user?.id ?? null,
     });
+    await ensureVendorPaymentForApprovedApplication(applicationId, approvedUser.organizationId);
     notificationTitle = "Vendor application approved";
     notificationBody = note || "Your Vendor application is approved. Your participant workspace is now available.";
     notificationType = "success";
@@ -124,7 +126,9 @@ export async function reviewVendorApplicationAction(
   revalidatePath("/admin/access-requests");
   revalidatePath("/admin/vendor-applications");
   revalidatePath("/admin/vendors");
+  revalidatePath("/admin/vendor-payments");
   revalidatePath("/portal");
   revalidatePath("/portal/application");
+  revalidatePath("/portal/payment");
   return { message: `Application ${decision.replaceAll("_", " ")} saved.`, status: "success" };
 }
