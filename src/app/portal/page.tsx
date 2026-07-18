@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import {
   BadgeCheck,
   Building2,
+  ChevronRight,
   ClipboardCheck,
   FileText,
   Handshake,
@@ -19,6 +20,7 @@ import { ProgressBar } from "@/components/progress-bar";
 import { StatusPill } from "@/components/status-pill";
 import { cancelParticipantAccessRequest, requestParticipantAccess } from "@/app/portal/actions";
 import { getAccessRequestForClerkUser, getParticipantPlacement } from "@/db/queries";
+import { getVendorApplicationByClerkUser } from "@/db/vendor-applications";
 import { getCurrentAppSession, isAdminRole } from "@/lib/auth";
 import { getPortalContext } from "@/lib/portal-context";
 import {
@@ -106,10 +108,17 @@ async function ParticipantAccessRequest() {
     redirect("/admin");
   }
 
-  const existingRequest = await getAccessRequestForClerkUser(session.clerkUserId);
-  const canSubmitRequest = !existingRequest || existingRequest.status === "rejected" || existingRequest.status === "cancelled";
-  const requestPanelTitle = existingRequest?.status === "approved" ? "Access approved" : "Request under review";
-  const requestPanelCopy = existingRequest?.status === "approved"
+  const [existingRequest, existingApplication] = await Promise.all([
+    getAccessRequestForClerkUser(session.clerkUserId),
+    getVendorApplicationByClerkUser(session.clerkUserId),
+  ]);
+  const canSubmitRequest = !existingApplication && (!existingRequest || existingRequest.status === "rejected" || existingRequest.status === "cancelled");
+  const requestPanelTitle = existingApplication
+    ? existingApplication.status === "draft" ? "Vendor application in progress" : "Vendor application status"
+    : existingRequest?.status === "approved" ? "Access approved" : "Request under review";
+  const requestPanelCopy = existingApplication
+    ? "Continue or review the structured Vendor dossier connected to this account."
+    : existingRequest?.status === "approved"
     ? "Your role has been approved. The portal will open automatically once your workspace record is available."
     : "The organizer team is validating this request. You can cancel it if the organization, role or details are wrong.";
 
@@ -148,15 +157,19 @@ async function ParticipantAccessRequest() {
         </aside>
 
         {canSubmitRequest ? (
+          <div className="grid gap-4">
+          <article className="overflow-hidden rounded-xl border-2 border-acv-gold bg-white shadow-sm">
+            <div className="bg-acv-ink p-5 text-white"><Store className="size-6 text-acv-gold" /><h2 className="mt-3 text-xl font-semibold">Apply as a Vendor</h2><p className="mt-2 text-sm leading-6 text-white/70">Build a structured dossier, select a published package and accept the current operating policies.</p></div>
+            <div className="p-5"><Link className="inline-flex items-center gap-2 rounded-lg bg-acv-gold px-4 py-2.5 text-sm font-black text-acv-ink" href="/apply/vendor">Start Vendor application <ChevronRight className="size-4" /></Link></div>
+          </article>
           <form action={requestParticipantAccess} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="text-xl font-semibold text-acv-ink">Request participant access</h2>
+            <h2 className="text-xl font-semibold text-acv-ink">Sponsor or partner access</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Use this form only if your organization is joining the event as a vendor, sponsor or partner.
+              Use this shorter request if your organization is joining the event as a sponsor or partner.
               Public visitors should browse the public pages without signing up.
             </p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {[
-                { value: "vendor", label: "Vendor", icon: Store, body: "Sell food, retail, craft or services from an assigned stand." },
                 { value: "sponsor", label: "Sponsor", icon: Sparkles, body: "Manage brand assets, activation plans and sponsor logistics." },
                 { value: "partner", label: "Partner", icon: Handshake, body: "Coordinate institutional, media, mobility or operational support." },
               ].map((option) => (
@@ -217,11 +230,13 @@ async function ParticipantAccessRequest() {
               Send participant request
             </button>
           </form>
+          </div>
         ) : (
           <article className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="text-xl font-semibold text-acv-ink">{requestPanelTitle}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">{requestPanelCopy}</p>
-            {existingRequest?.status === "pending" ? (
+            {existingApplication ? <Link className="mt-5 inline-flex items-center gap-2 rounded-lg bg-acv-gold px-4 py-2.5 text-sm font-black text-acv-ink" href="/apply/vendor">Open Vendor application <ChevronRight className="size-4" /></Link> : null}
+            {existingRequest?.status === "pending" && !existingApplication ? (
               <form action={cancelParticipantAccessRequest} className="mt-5 grid gap-3 rounded-lg bg-slate-50 p-4">
                 <label className="grid gap-2">
                   <span className="text-sm font-semibold text-slate-700">Reason for cancellation</span>

@@ -16,7 +16,9 @@ const portalNav = [
 export function PortalNav({ activeHref, participantRole, previewQuery = "" }: { activeHref: string; participantRole?: ParticipantRole; previewQuery?: string }) {
   const roleNav = participantRole === "sponsor"
     ? [...portalNav, { href: "/portal/sponsor-benefits", label: "Benefits" }]
-    : portalNav;
+    : participantRole === "vendor"
+      ? [portalNav[0], { href: "/portal/application", label: "Application" }, ...portalNav.slice(1)]
+      : portalNav;
   const items = previewQuery
     ? [
         ...roleNav.map((item) => ({ ...item, href: `${item.href}${previewQuery}` })),

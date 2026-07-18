@@ -42,6 +42,9 @@ const statusCopy: Record<string, string> = {
   delivered: "Delivered",
   validated: "Validated",
   overdue: "Overdue",
+  under_review: "Under review",
+  changes_requested: "Changes requested",
+  withdrawn: "Withdrawn",
 };
 
 const statusClasses: Record<string, string> = {
@@ -82,6 +85,9 @@ const statusClasses: Record<string, string> = {
   delivered: "border-emerald-300 bg-emerald-50 text-emerald-800",
   validated: "border-emerald-300 bg-emerald-50 text-emerald-800",
   overdue: "border-rose-300 bg-rose-50 text-rose-800",
+  under_review: "border-sky-300 bg-sky-50 text-sky-800",
+  changes_requested: "border-amber-300 bg-amber-50 text-amber-800",
+  withdrawn: "border-slate-300 bg-slate-50 text-slate-700",
 };
 
 function StatusIcon({ status }: { status: string }) {
@@ -89,11 +95,11 @@ function StatusIcon({ status }: { status: string }) {
     return <CheckCircle2 aria-hidden="true" className="size-3.5" />;
   }
 
-  if (status === "rejected" || status === "blocked" || status === "maintenance" || status === "cancelled" || status === "expired" || status === "inactive" || status === "open" || status === "overdue" || status === "revoked") {
+  if (status === "rejected" || status === "blocked" || status === "maintenance" || status === "cancelled" || status === "expired" || status === "inactive" || status === "open" || status === "overdue" || status === "revoked" || status === "withdrawn") {
     return <XCircle aria-hidden="true" className="size-3.5" />;
   }
 
-  if (status === "submitted" || status === "in_progress" || status === "confirmed" || status === "issued" || status === "reserved" || status === "pending" || status === "scheduled" || status === "monitoring" || status === "expiring_soon" || status === "waiting_sponsor" || status === "in_production") {
+  if (status === "submitted" || status === "under_review" || status === "changes_requested" || status === "in_progress" || status === "confirmed" || status === "issued" || status === "reserved" || status === "pending" || status === "scheduled" || status === "monitoring" || status === "expiring_soon" || status === "waiting_sponsor" || status === "in_production") {
     return <Clock3 aria-hidden="true" className="size-3.5" />;
   }
 
