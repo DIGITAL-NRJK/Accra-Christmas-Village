@@ -11,8 +11,33 @@ async function main() {
   const db = getDb();
   await db
     .update(documentRequirements)
-    .set({ appliesToCategories: ["Food & drinks"] })
+    .set({
+      appliesToCategories: [],
+      appliesToVendorKinds: ["food"],
+      description: "Current food handling certification for the team preparing or serving products.",
+      name: "Food handling certification",
+    })
     .where(eq(documentRequirements.id, "req-food-safety"));
+  await db.insert(documentRequirements).values([
+    {
+      appliesToVendorKinds: ["food"],
+      description: "Current health permit covering the Food Vendor activity and event period.",
+      id: "req-food-health-permit",
+      name: "Health permit",
+      organizationType: "vendor",
+      required: true,
+      sortOrder: 3,
+    },
+    {
+      appliesToVendorKinds: ["food"],
+      description: "Documented plan for sorting, storing and removing food, oil and packaging waste.",
+      id: "req-food-waste-plan",
+      name: "Waste disposal plan",
+      organizationType: "vendor",
+      required: true,
+      sortOrder: 4,
+    },
+  ]).onConflictDoNothing();
   const participants = await db
     .select({ id: organizations.id })
     .from(organizations)

@@ -5,6 +5,7 @@ import { StatusPill } from "@/components/status-pill";
 import { UploadDocumentForm } from "@/app/portal/documents/upload-document-form";
 import { listAdminData } from "@/db/queries";
 import { defaultMaxDocumentUploadBytes } from "@/lib/document-upload";
+import { documentRequirementAppliesToVendor } from "@/lib/document-requirements";
 import { requirePortalContext, type PortalSearchParams } from "@/lib/portal-context";
 
 export const metadata = {
@@ -35,13 +36,12 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
   const maxUploadBytes = getMaxDocumentUploadBytes();
   const documents = allDocuments.filter((document) => document.organizationId === organization.id);
   const requirementType = role === "sponsor" ? "sponsor" : role === "partner" ? "partner" : "vendor";
-  const vendorCategory = vendors.find((vendor) => vendor.organizationId === organization.id)?.category;
+  const vendor = vendors.find((candidate) => candidate.organizationId === organization.id);
   const requirements = documentRequirements.filter(
     (requirement) =>
       requirement.organizationType === requirementType &&
       (requirementType !== "vendor" ||
-        requirement.appliesToCategories.length === 0 ||
-        requirement.appliesToCategories.includes(vendorCategory ?? "")),
+        documentRequirementAppliesToVendor(requirement, vendor)),
   );
 
   return (
@@ -49,7 +49,7 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
       <PageHeader
         eyebrow="Documents"
         title="Upload and track required documents"
-        description="Business registration, food safety, insurance and staff list files move through missing, submitted, approved and rejected statuses."
+        description="Business registration, Food Vendor permits, insurance and staff files move through missing, submitted, approved and rejected statuses."
       />
       <PortalNav activeHref="/portal/documents" participantRole={role} previewQuery={previewQuery} />
       <section className="mx-auto grid w-full max-w-6xl gap-4 px-4 pb-10 sm:px-6 lg:px-8">

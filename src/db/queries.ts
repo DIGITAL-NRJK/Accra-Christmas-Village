@@ -35,6 +35,7 @@ import {
 } from "@/db/schema";
 import { defaultHeroSlides } from "@/lib/hero-slides";
 import { incidents as defaultIncidents } from "@/lib/data";
+import { documentRequirementAppliesToVendor } from "@/lib/document-requirements";
 import type {
   DocumentStatus,
   HeroSlide,
@@ -283,8 +284,7 @@ export async function syncOrganizationCompliance(organizationId: string) {
   const required = requirementRows.filter(
     (requirement) =>
       requirement.required &&
-      (requirement.appliesToCategories.length === 0 ||
-        requirement.appliesToCategories.includes(vendor?.category ?? "")),
+      documentRequirementAppliesToVendor(requirement, vendor),
   );
   const documentRows = await db
     .select()
@@ -740,6 +740,7 @@ export async function ensureParticipantRecord(
         organizationId,
         tradingName: organizationName,
         category: "Pending classification",
+        vendorKind: "general",
         standId: null,
         onboardingStatus: "not_started",
         complianceStatus: "not_started",
@@ -1609,6 +1610,7 @@ export async function assignStand(input: AssignStandInput) {
         organizationId: input.organizationId,
         tradingName: organization.name,
         category: "Pending classification",
+        vendorKind: "general",
         standId: input.standId,
         onboardingStatus: "in_progress",
         complianceStatus: "in_progress",
@@ -1661,7 +1663,7 @@ export type SaveSponsorInput = Pick<
 
 export type SaveVendorInput = Pick<
   Vendor,
-  "approved" | "category" | "complianceStatus" | "onboardingStatus" | "standId" | "tradingName"
+  "approved" | "category" | "complianceStatus" | "onboardingStatus" | "standId" | "tradingName" | "vendorKind"
 > & {
   contactEmail: string;
   contactPhone: string;
@@ -1714,6 +1716,7 @@ export async function updateVendor(
       onboardingStatus: input.onboardingStatus,
       standId: input.standId,
       tradingName: input.tradingName,
+      vendorKind: input.vendorKind,
     })
     .where(eq(vendors.id, vendorId));
 

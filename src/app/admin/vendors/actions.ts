@@ -5,6 +5,7 @@ import {
   deleteVendor,
   getVendorById,
   recordAuditLog,
+  syncOrganizationCompliance,
   updateVendor,
   type SaveVendorInput,
 } from "@/db/queries";
@@ -23,6 +24,7 @@ const complianceStatuses: ComplianceStatus[] = [
   "compliant",
   "blocked",
 ];
+const vendorKinds = ["general", "food"] as const;
 
 function textValue(formData: FormData, name: string) {
   return String(formData.get(name) ?? "").trim();
@@ -40,6 +42,7 @@ function vendorInput(formData: FormData): SaveVendorInput | { error: string } {
   const standId = textValue(formData, "standId") || null;
   const onboardingStatus = textValue(formData, "onboardingStatus") as ComplianceStatus;
   const complianceStatus = textValue(formData, "complianceStatus") as ComplianceStatus;
+  const vendorKind = textValue(formData, "vendorKind") as (typeof vendorKinds)[number];
 
   if (!tradingName || !category || !contactEmail) {
     return { error: "Complete trading name, category and contact email." };
@@ -51,7 +54,8 @@ function vendorInput(formData: FormData): SaveVendorInput | { error: string } {
 
   if (
     !complianceStatuses.includes(onboardingStatus) ||
-    !complianceStatuses.includes(complianceStatus)
+    !complianceStatuses.includes(complianceStatus) ||
+    !vendorKinds.includes(vendorKind)
   ) {
     return { error: "Choose valid onboarding and compliance statuses." };
   }
@@ -65,6 +69,7 @@ function vendorInput(formData: FormData): SaveVendorInput | { error: string } {
     onboardingStatus,
     standId,
     tradingName,
+    vendorKind,
   };
 }
 
@@ -72,6 +77,9 @@ function revalidateVendorPaths() {
   revalidatePath("/admin");
   revalidatePath("/admin/vendors");
   revalidatePath("/admin/stands");
+  revalidatePath("/admin/food-vendor-readiness");
+  revalidatePath("/portal/documents");
+  revalidatePath("/portal/onboarding");
   revalidatePath("/stands");
 }
 
@@ -103,6 +111,7 @@ export async function updateVendorAction(
   if (!updated) {
     return errorState("The vendor no longer exists or does not match this organization.");
   }
+  if (previous?.vendorKind !== input.vendorKind) await syncOrganizationCompliance(organizationId);
   await recordAuditLog({ action: "vendor.updated", actorUserId: session.user?.id ?? null, entityId: vendorId, entityType: "vendor", metadata: { before: previous, after: input } });
 
   revalidateVendorPaths();

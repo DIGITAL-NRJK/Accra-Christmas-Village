@@ -72,6 +72,7 @@ export type Vendor = {
   organizationId: string;
   tradingName: string;
   category: string;
+  vendorKind: "general" | "food";
   standId: string | null;
   onboardingStatus: ComplianceStatus;
   complianceStatus: ComplianceStatus;
@@ -126,6 +127,7 @@ export type DocumentRequirement = {
   description: string;
   required: boolean;
   appliesToCategories?: string[];
+  appliesToVendorKinds?: Array<"general" | "food">;
   sortOrder: number;
 };
 

@@ -63,6 +63,14 @@ export function VendorForm({ organization, stands, vendor }: VendorFormProps) {
             required
           />
         </label>
+        <label className="grid gap-2 sm:col-span-2">
+          <span className="text-sm font-semibold text-slate-700">Vendor type</span>
+          <select className={inputClass} defaultValue={vendor.vendorKind} name="vendorKind">
+            <option value="general">General Vendor</option>
+            <option value="food">Food Vendor</option>
+          </select>
+          <span className="text-xs leading-5 text-slate-500">Food Vendors receive the handling certificate, health permit and waste plan requirements.</span>
+        </label>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">

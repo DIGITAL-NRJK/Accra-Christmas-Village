@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   CalendarClock,
   BookOpenCheck,
+  ClipboardCheck,
   CheckCircle2,
   IdCard,
   FileClock,
@@ -27,6 +28,7 @@ import { listVendorCatalog } from "@/db/vendor-catalog";
 import { listVendorPayments } from "@/db/vendor-payments";
 import { listVendorBrandProfiles } from "@/db/vendor-branding";
 import { getVendorHandbookOverview } from "@/db/vendor-handbook";
+import { getFoodVendorReadinessOverview } from "@/db/food-vendor-readiness";
 import { canAccessAdminSection, requireAdminSection, type AdminSection } from "@/lib/admin-rbac";
 import type { Role } from "@/lib/types";
 
@@ -83,7 +85,7 @@ export default async function AdminPage() {
     stands,
     users,
     vendors,
-  }, accreditationData, vendorCatalog, vendorPayments, vendorBrandProfiles, vendorHandbook] = await Promise.all([listAdminData(), listAccreditationData(), listVendorCatalog(), listVendorPayments(), listVendorBrandProfiles(), getVendorHandbookOverview()]);
+  }, accreditationData, vendorCatalog, vendorPayments, vendorBrandProfiles, vendorHandbook, foodVendorReadiness] = await Promise.all([listAdminData(), listAccreditationData(), listVendorCatalog(), listVendorPayments(), listVendorBrandProfiles(), getVendorHandbookOverview(), getFoodVendorReadinessOverview()]);
   const copy = dashboardCopy[session.role] ?? dashboardCopy.admin!;
   const sectionHref = (section: AdminSection, href: string) => (canAccessAdminSection(session.role, section) ? href : undefined);
   const pendingAccessRequests = accessRequests.filter((request) => request.status === "pending").length;
@@ -120,6 +122,7 @@ export default async function AdminPage() {
     { detail: "Transfer proofs awaiting financial reconciliation.", href: sectionHref("vendor_payments", "/admin/vendor-payments?status=under_review"), icon: ReceiptText, label: "Vendor payments", value: pendingVendorPayments },
     { detail: "Vendor copy and images awaiting an editorial decision.", href: sectionHref("vendor_branding", "/admin/vendor-branding?status=submitted"), icon: ImageIcon, label: "Vendor brand profiles", value: pendingVendorBrandProfiles },
     { detail: vendorHandbook.handbook ? `Acknowledgements for live handbook version ${vendorHandbook.handbook.version}.` : "Publish the first operational handbook.", href: sectionHref("vendor_handbook", "/admin/vendor-handbook"), icon: BookOpenCheck, label: "Handbook readiness", value: `${vendorHandbook.readyVendors}/${vendorHandbook.totalVendors}` },
+    { detail: `${foodVendorReadiness.reviewQueue} proof(s) awaiting review and ${foodVendorReadiness.blocked} blocked dossier(s).`, href: sectionHref("food_vendor_readiness", "/admin/food-vendor-readiness"), icon: ClipboardCheck, label: "Food Vendors ready", value: `${foodVendorReadiness.ready}/${foodVendorReadiness.total}` },
     { detail: "Accounts with portal or admin access.", href: sectionHref("users", "/admin/users"), icon: Users, label: "Users", value: users.length },
     { detail: "Awaiting organizer approval.", href: sectionHref("access", "/admin/access-requests?status=pending"), icon: Handshake, label: "Access requests", value: pendingAccessRequests },
     { detail: "Active and pending vendor records.", href: sectionHref("vendors", "/admin/vendors"), icon: Store, label: "Vendors", value: vendors.length },
