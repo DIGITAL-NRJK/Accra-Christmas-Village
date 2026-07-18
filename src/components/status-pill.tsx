@@ -48,6 +48,7 @@ const statusCopy: Record<string, string> = {
   partially_paid: "Partially paid",
   paid: "Paid",
   accepted: "Accepted",
+  published: "Published",
 };
 
 const statusClasses: Record<string, string> = {
@@ -94,10 +95,11 @@ const statusClasses: Record<string, string> = {
   partially_paid: "border-amber-300 bg-amber-50 text-amber-800",
   paid: "border-emerald-300 bg-emerald-50 text-emerald-800",
   accepted: "border-emerald-300 bg-emerald-50 text-emerald-800",
+  published: "border-emerald-300 bg-emerald-50 text-emerald-800",
 };
 
 function StatusIcon({ status }: { status: string }) {
-  if (status === "approved" || status === "accepted" || status === "paid" || status === "compliant" || status === "active" || status === "assigned" || status === "live" || status === "resolved" || status === "delivered" || status === "validated") {
+  if (status === "approved" || status === "accepted" || status === "paid" || status === "published" || status === "compliant" || status === "active" || status === "assigned" || status === "live" || status === "resolved" || status === "delivered" || status === "validated") {
     return <CheckCircle2 aria-hidden="true" className="size-3.5" />;
   }
 

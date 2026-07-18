@@ -27,6 +27,7 @@ export type AdminSection =
   | "users"
   | "vendor_applications"
   | "vendor_catalog"
+  | "vendor_branding"
   | "vendor_payments"
   | "vendors";
 
@@ -76,6 +77,7 @@ export const adminNavGroups: AdminNavGroup[] = [
       { href: "/admin/vendor-applications", label: "Vendor applications", section: "vendor_applications" },
       { href: "/admin/vendor-catalog", label: "Vendor catalog", section: "vendor_catalog" },
       { href: "/admin/vendor-payments", label: "Vendor payments", section: "vendor_payments" },
+      { href: "/admin/vendor-branding", label: "Vendor branding", section: "vendor_branding" },
       { href: "/admin/sponsors", label: "Sponsors", section: "sponsors" },
       { href: "/admin/sponsor-deliverables", label: "Sponsor delivery", section: "sponsor_delivery" },
     ],
@@ -112,8 +114,8 @@ const allAdminSections = adminNavItems.map((item) => item.section);
 const adminSectionPermissions: Record<Role, AdminSection[]> = {
   admin: allAdminSections,
   super_admin: allAdminSections,
-  operations_manager: ["dashboard", "access", "accreditations", "check_in", "vendors", "vendor_applications", "vendor_catalog", "vendor_payments", "sponsors", "sponsor_delivery", "incidents", "notifications", "tickets", "stands", "tasks", "analytics", "reports"],
-  content_manager: ["dashboard", "hero", "programme", "announcements", "notifications", "analytics", "sponsor_delivery", "reports"],
+  operations_manager: ["dashboard", "access", "accreditations", "check_in", "vendors", "vendor_applications", "vendor_catalog", "vendor_payments", "vendor_branding", "sponsors", "sponsor_delivery", "incidents", "notifications", "tickets", "stands", "tasks", "analytics", "reports"],
+  content_manager: ["dashboard", "hero", "programme", "announcements", "notifications", "analytics", "vendor_branding", "sponsor_delivery", "reports"],
   compliance_manager: ["dashboard", "documents", "compliance", "notifications", "tickets", "reports"],
   stand_manager: ["dashboard", "check_in", "stands", "tasks", "reports"],
   partner: [],

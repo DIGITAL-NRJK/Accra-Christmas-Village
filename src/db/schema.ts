@@ -139,6 +139,27 @@ export const vendorPaymentProofStatusEnum = pgEnum("vendor_payment_proof_status"
   "rejected",
 ]);
 
+export const vendorBrandProfileStatusEnum = pgEnum("vendor_brand_profile_status", [
+  "draft",
+  "submitted",
+  "under_review",
+  "changes_requested",
+  "approved",
+  "published",
+]);
+
+export const vendorBrandAssetKindEnum = pgEnum("vendor_brand_asset_kind", [
+  "logo",
+  "cover",
+  "product",
+]);
+
+export const vendorBrandAssetStatusEnum = pgEnum("vendor_brand_asset_status", [
+  "submitted",
+  "approved",
+  "rejected",
+]);
+
 export const accessRequestStatusEnum = pgEnum("access_request_status", [
   "pending",
   "approved",
@@ -227,6 +248,61 @@ export const vendors = pgTable(
     index("vendors_category_idx").on(table.categoryId),
     index("vendors_package_idx").on(table.packageId),
     index("vendors_stand_idx").on(table.standId),
+  ],
+);
+
+export const vendorBrandProfiles = pgTable(
+  "vendor_brand_profiles",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull(),
+    tagline: text("tagline").notNull().default(""),
+    summary: text("summary").notNull().default(""),
+    productHighlights: text("product_highlights").notNull().default(""),
+    websiteUrl: text("website_url").notNull().default(""),
+    instagramHandle: text("instagram_handle").notNull().default(""),
+    socialPromotionConsent: boolean("social_promotion_consent").notNull().default(false),
+    status: vendorBrandProfileStatusEnum("status").notNull().default("draft"),
+    reviewerNote: text("reviewer_note").notNull().default(""),
+    reviewedByUserId: text("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("vendor_brand_profiles_organization_unique").on(table.organizationId),
+    uniqueIndex("vendor_brand_profiles_slug_unique").on(table.slug),
+    index("vendor_brand_profiles_status_idx").on(table.status, table.updatedAt),
+  ],
+);
+
+export const vendorBrandAssets = pgTable(
+  "vendor_brand_assets",
+  {
+    id: text("id").primaryKey(),
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => vendorBrandProfiles.id, { onDelete: "cascade" }),
+    kind: vendorBrandAssetKindEnum("kind").notNull(),
+    fileName: text("file_name").notNull(),
+    contentType: text("content_type").notNull(),
+    fileSize: integer("file_size").notNull(),
+    storageKey: text("storage_key").notNull(),
+    altText: text("alt_text").notNull(),
+    status: vendorBrandAssetStatusEnum("status").notNull().default("submitted"),
+    reviewerNote: text("reviewer_note").notNull().default(""),
+    reviewedByUserId: text("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("vendor_brand_assets_profile_idx").on(table.profileId, table.kind, table.createdAt),
+    index("vendor_brand_assets_status_idx").on(table.status),
   ],
 );
 
